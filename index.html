@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>粮食产品国际产能分布系统</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell" id="appShell">
+      <section class="landing-view" id="landingView">
+        <div class="landing-backdrop">
+          <span class="orb orb-a"></span>
+          <span class="orb orb-b"></span>
+          <span class="orb orb-c"></span>
+        </div>
+        <header class="landing-header">
+          <h1>粮食产品国际产能分布系统</h1>
+          <p class="landing-copy">
+            从作物入口开始，快速进入对应的国际供给格局分析视图。点击任一品种后，系统将自动高亮中国前五大进口来源国，并展开该品种的全球供给画像。
+          </p>
+        </header>
+        <main class="crop-gallery" id="cropGallery"></main>
+      </section>
+
+      <section class="dashboard-view hidden" id="dashboardView">
+        <header class="dashboard-topbar">
+          <div class="brand-cluster">
+            <button class="back-home" id="backHome" type="button">返回品种页</button>
+            <div>
+              <p class="eyebrow">Global Crop Supply Dashboard</p>
+              <h2 id="dashboardTitle">粮食产品国际产能分布系统</h2>
+            </div>
+          </div>
+          <div class="topbar-side">
+            <div class="product-switcher" id="productSwitcher"></div>
+            <div class="module-switcher" id="moduleSwitcher"></div>
+          </div>
+        </header>
+
+        <main class="dashboard-grid">
+          <section class="glass-panel map-panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker" id="mapKicker"></p>
+                <h3 id="mapTitle"></h3>
+              </div>
+              <div class="panel-actions">
+                <div class="year-switcher" id="yearSwitcher"></div>
+                <div class="legend" id="legend"></div>
+              </div>
+            </div>
+            <div class="map-stage">
+              <svg id="worldMap" viewBox="0 0 1000 520" aria-label="world map"></svg>
+              <div id="mapTooltip" class="map-tooltip hidden"></div>
+            </div>
+            <div class="map-footer">
+              <p class="map-caption" id="mapCaption"></p>
+              <div class="metric-strip" id="heroMetrics"></div>
+            </div>
+          </section>
+
+          <aside class="glass-panel side-panel">
+            <div class="side-summary">
+              <div class="panel-head compact">
+                <div>
+                  <p class="panel-kicker">选中国家</p>
+                  <h3 id="detailTitle">请选择国家</h3>
+                </div>
+                <div class="badge" id="detailBadge">待选择</div>
+              </div>
+              <div class="detail-highlights" id="detailHighlights"></div>
+            </div>
+
+            <div class="chart-stack" id="chartStack"></div>
+          </aside>
+        </main>
+      </section>
+    </div>
+
+    <script src="./data.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
