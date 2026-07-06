@@ -7,28 +7,114 @@
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-function Find-SystemPython {
-    $launchers = @(
-        "py -3.12",
-        "py -3.11",
-        "py -3.10",
-        "py -3",
-        "python"
-    )
+function Test-UsablePythonPath {
+    param([string]$PythonExe)
 
-    foreach ($launcher in $launchers) {
+    if (-not $PythonExe) {
+        return $false
+    }
+
+    $PythonExe = $PythonExe.Trim()
+    if (-not (Test-Path $PythonExe)) {
+        return $false
+    }
+
+    if ($PythonExe -match "WindowsApps|Microsoft\\WindowsApps") {
+        return $false
+    }
+
+    try {
+        & $PythonExe -c "import sys" 2>$null | Out-Null
+        return $LASTEXITCODE -eq 0
+    }
+    catch {
+        return $false
+    }
+}
+
+function Get-PythonVersionKey {
+    param([string]$PythonExe)
+
+    try {
+        $versionLine = & $PythonExe -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>$null |
+            Select-Object -First 1
+        $versionLine = $versionLine.Trim()
+        if ($versionLine -match "^(\d+)\.(\d+)$") {
+            $major = [int]$Matches[1]
+            $minor = [int]$Matches[2]
+            if ($major -gt 3 -or ($major -eq 3 -and $minor -ge 10)) {
+                return @{
+                    Key = "$major.$minor"
+                    Version = [version]$versionLine
+                    Executable = $PythonExe
+                }
+            }
+        }
+    }
+    catch {
+    }
+
+    return $null
+}
+
+function Find-SystemPython {
+    $candidates = [System.Collections.Generic.List[string]]::new()
+
+    try {
+        $pyList = & py -0p 2>$null
+        foreach ($line in $pyList) {
+            if ($line -match "^\s*-?\S+\s+(.+\.exe)\s*$") {
+                $candidates.Add($Matches[1].Trim())
+            }
+        }
+    }
+    catch {
+    }
+
+    foreach ($launcher in @(
+            @{ Command = "py"; Args = @("-3.12") },
+            @{ Command = "py"; Args = @("-3.11") },
+            @{ Command = "py"; Args = @("-3.10") },
+            @{ Command = "py"; Args = @("-3") },
+            @{ Command = "python3"; Args = @() },
+            @{ Command = "python"; Args = @() }
+        )) {
         try {
-            $parts = $launcher -split " "
-            $path = & $parts[0] @($parts[1..($parts.Length - 1)]) -c "import sys; print(sys.executable)" 2>$null |
+            $resolved = & $launcher.Command @($launcher.Args) -c "import sys; print(sys.executable)" 2>$null |
                 Select-Object -First 1
-            $path = $path.Trim()
-            if ($path -and (Test-Path $path) -and $path -notmatch "WindowsApps") {
-                return $path
+            if ($resolved) {
+                $candidates.Add($resolved.Trim())
             }
         }
         catch {
+        }
+    }
+
+    foreach ($commandName in @("python", "python3", "py")) {
+        $command = Get-Command $commandName -ErrorAction SilentlyContinue
+        if ($command -and $command.Source -and $command.Source -notmatch "WindowsApps|Microsoft\\WindowsApps") {
+            $candidates.Add($command.Source)
+        }
+    }
+
+    $best = $null
+    foreach ($candidate in ($candidates | Select-Object -Unique)) {
+        if (-not (Test-UsablePythonPath -PythonExe $candidate)) {
             continue
         }
+
+        $versionInfo = Get-PythonVersionKey -PythonExe $candidate
+        if (-not $versionInfo) {
+            continue
+        }
+
+        if ($null -eq $best -or $versionInfo.Version -gt $best.Version) {
+            $best = $versionInfo
+        }
+    }
+
+    if ($best) {
+        return $best.Executable
     }
 
     return $null
@@ -122,70 +208,71 @@ function Ensure-DataImportDeps {
         throw @"
 缺少 openpyxl 模块，数据导入无法运行。
 请手动执行：
-  .\.venv\Scripts\pip install -r requirements.txt
+  python -m pip install -r requirements.txt
 或：
-  .\.venv\Scripts\pip install openpyxl
+  python -m pip install openpyxl
 "@
     }
 }
 
-function Ensure-ProjectVenv {
+function Resolve-ProjectPython {
     param(
         [Parameter(Mandatory = $true)]
         [string]$ProjectRoot
     )
 
-    $venvDir = Join-Path $ProjectRoot ".venv"
-    $venvPython = Join-Path $venvDir "Scripts\python.exe"
-
-    if (Test-VenvPython $venvPython) {
-        return $venvPython
-    }
-
-    if (Test-Path $venvDir) {
-        Write-Host "检测到损坏的 .venv，正在重建..." -ForegroundColor Yellow
-        Remove-Item -Recurse -Force $venvDir
-    }
-
     $systemPython = Find-SystemPython
-    if (-not $systemPython) {
-        throw @"
-未找到可用的 Python。请先安装 Python 3.10+，并确保 py 或 python 命令可用。
+    if ($systemPython) {
+        return @{
+            Executable = $systemPython
+            Source = "system"
+        }
+    }
+
+    $venvPython = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
+    if (Test-VenvPython $venvPython) {
+        return @{
+            Executable = $venvPython
+            Source = "venv"
+        }
+    }
+
+    throw @"
+未找到可用的 Python 3.10+。请先安装 Python，并确保 py 或 python 命令可用。
 也可手动创建虚拟环境：
   cd `"$ProjectRoot`"
   python -m venv .venv
   .\.venv\Scripts\pip install -r requirements.txt
 "@
-    }
+}
 
-    Write-Host "未检测到可用 .venv，正在使用系统 Python 创建虚拟环境..."
-    Write-Host "系统 Python: $systemPython"
+function Get-PythonModuleArguments {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ModuleName,
+        [string[]]$ModuleArgs = @()
+    )
 
-    & $systemPython -m venv $venvDir
-    if ($LASTEXITCODE -ne 0) {
-        throw "创建虚拟环境失败，退出码: $LASTEXITCODE"
-    }
+    return @("-m", $ModuleName) + $ModuleArgs
+}
 
-    if (-not (Test-VenvPython $venvPython)) {
-        throw "虚拟环境创建后仍不可用: $venvPython"
-    }
+function Format-ProcessArguments {
+    param([string[]]$Arguments)
 
-    $requirements = Join-Path $ProjectRoot "requirements.txt"
-    if (Test-Path $requirements) {
-        $installed = Install-ProjectRequirements -VenvPython $venvPython -Requirements $requirements
-        if (-not $installed) {
-            Write-Host @"
+    $formatted = foreach ($argument in $Arguments) {
+        if ($null -eq $argument) {
+            continue
+        }
 
-依赖安装未完成（可能是网络或代理问题）。
-启动本地服务仍可正常使用；若需数据导入，请稍后手动执行：
-  .\.venv\Scripts\pip install -r requirements.txt
-
-"@ -ForegroundColor Yellow
+        if ($argument -match '\s|"') {
+            '"{0}"' -f ($argument -replace '"', '""')
+        }
+        else {
+            $argument
         }
     }
 
-    Write-Host "虚拟环境已就绪: $venvPython"
-    return $venvPython
+    return ($formatted -join " ")
 }
 
 function Get-DefaultDataRoot {
@@ -281,11 +368,11 @@ function Invoke-DataImport {
     Test-DataRoot -DataRoot $DataRoot
     Ensure-DataImportDeps -ProjectRoot $ProjectRoot -VenvPython $Python
 
-    $script = Join-Path $ProjectRoot "scripts\build_data.py"
+    $moduleArgs = Get-PythonModuleArguments -ModuleName "scripts.build_data"
 
     $startInfo = New-Object System.Diagnostics.ProcessStartInfo
     $startInfo.FileName = $Python
-    $startInfo.Arguments = "`"$script`""
+    $startInfo.Arguments = Format-ProcessArguments -Arguments $moduleArgs
     $startInfo.WorkingDirectory = $ProjectRoot
     $startInfo.UseShellExecute = $false
     $startInfo.CreateNoWindow = $true
@@ -323,7 +410,7 @@ function Start-ConsoleServer {
     $lanUrl = Get-LanUrl -Port $ListenPort
 
     try {
-        $python = Ensure-ProjectVenv -ProjectRoot $root
+        $pythonInfo = Resolve-ProjectPython -ProjectRoot $root
         Ensure-ServerDeps -ProjectRoot $root
     }
     catch {
@@ -331,17 +418,25 @@ function Start-ConsoleServer {
         exit 1
     }
 
+    $python = $pythonInfo.Executable
+    $pythonSource = if ($pythonInfo.Source -eq "system") { "系统 Python" } else { "虚拟环境 Python" }
+
     Write-Host "正在启动本地 HTTPS 服务: $localUrl"
     Write-Host "局域网访问地址: $lanUrl"
     Write-Host "项目目录: $root"
-    Write-Host "Python 运行时: $python"
+    Write-Host "$pythonSource`: $python"
     Write-Host "首次访问浏览器可能提示证书不受信任，选择继续访问即可。"
     Write-Host "按 Ctrl+C 停止服务。"
 
     Set-Location $root
-    $serverScript = Join-Path $root "scripts\https_server.py"
     $certDir = Join-Path $root "certs"
-    & $python $serverScript --port $ListenPort --bind 0.0.0.0 --directory $root --cert-dir $certDir
+    $moduleArgs = Get-PythonModuleArguments -ModuleName "scripts.https_server" -ModuleArgs @(
+        "--port", [string]$ListenPort,
+        "--bind", "0.0.0.0",
+        "--directory", $root,
+        "--cert-dir", $certDir
+    )
+    & $python @moduleArgs
 }
 
 function Start-ConsoleImport {
@@ -353,8 +448,8 @@ function Start-ConsoleImport {
     Write-Host "输出文件: $(Join-Path $root 'data.js')"
 
     try {
-        $python = Ensure-ProjectVenv -ProjectRoot $root
-        $result = Invoke-DataImport -ProjectRoot $root -DataRoot $ImportDataRoot -Python $python
+        $pythonInfo = Resolve-ProjectPython -ProjectRoot $root
+        $result = Invoke-DataImport -ProjectRoot $root -DataRoot $ImportDataRoot -Python $pythonInfo.Executable
     }
     catch {
         Write-Host $_.Exception.Message -ForegroundColor Red
@@ -383,6 +478,7 @@ function Start-LauncherGui {
     $script:ServerProcess = $null
     $script:ServerPort = $null
     $script:PythonPath = $null
+    $script:PythonSource = $null
     $script:ImportInProgress = $false
 
     function Stop-ProcessesOnPort {
@@ -453,8 +549,12 @@ function Start-LauncherGui {
 
         try {
             if (-not $script:PythonPath) {
-                Append-Log "正在检查 Python 虚拟环境..."
-                $script:PythonPath = Ensure-ProjectVenv -ProjectRoot $root
+                Append-Log "正在识别系统 Python..."
+                $pythonInfo = Resolve-ProjectPython -ProjectRoot $root
+                $script:PythonPath = $pythonInfo.Executable
+                $script:PythonSource = $pythonInfo.Source
+                $pythonLabel = if ($pythonInfo.Source -eq "system") { "系统 Python" } else { "虚拟环境 Python" }
+                Append-Log "$pythonLabel`: $($pythonInfo.Executable)"
             }
             Ensure-ServerDeps -ProjectRoot $root
         }
@@ -472,11 +572,16 @@ function Start-LauncherGui {
         $localUrl = "https://127.0.0.1:$port"
         $lanUrl = Get-LanUrl -Port $port
 
-        $serverScript = Join-Path $root "scripts\https_server.py"
         $certDir = Join-Path $root "certs"
+        $moduleArgs = Get-PythonModuleArguments -ModuleName "scripts.https_server" -ModuleArgs @(
+            "--port", [string]$port,
+            "--bind", "0.0.0.0",
+            "--directory", $root,
+            "--cert-dir", $certDir
+        )
         $startInfo = New-Object System.Diagnostics.ProcessStartInfo
         $startInfo.FileName = $script:PythonPath
-        $startInfo.Arguments = "`"$serverScript`" --port $port --bind 0.0.0.0 --directory `"$root`" --cert-dir `"$certDir`""
+        $startInfo.Arguments = Format-ProcessArguments -Arguments $moduleArgs
         $startInfo.WorkingDirectory = $root
         $startInfo.UseShellExecute = $false
         $startInfo.CreateNoWindow = $true
@@ -584,8 +689,12 @@ function Start-LauncherGui {
             Append-Log "数据目录: $dataRoot"
 
             if (-not $script:PythonPath) {
-                Append-Log "正在检查 Python 虚拟环境..."
-                $script:PythonPath = Ensure-ProjectVenv -ProjectRoot $root
+                Append-Log "正在识别系统 Python..."
+                $pythonInfo = Resolve-ProjectPython -ProjectRoot $root
+                $script:PythonPath = $pythonInfo.Executable
+                $script:PythonSource = $pythonInfo.Source
+                $pythonLabel = if ($pythonInfo.Source -eq "system") { "系统 Python" } else { "虚拟环境 Python" }
+                Append-Log "$pythonLabel`: $($pythonInfo.Executable)"
             }
 
             $result = Invoke-DataImport -ProjectRoot $root -DataRoot $dataRoot -Python $script:PythonPath
@@ -745,6 +854,16 @@ function Start-LauncherGui {
 
     Append-Log "启动器已就绪。默认端口: $($settings.port)"
     Append-Log "数据目录: $($settings.dataRoot)"
+    try {
+        $pythonInfo = Resolve-ProjectPython -ProjectRoot $root
+        $pythonLabel = if ($pythonInfo.Source -eq "system") { "系统 Python" } else { "虚拟环境 Python" }
+        Append-Log "已识别 $pythonLabel`: $($pythonInfo.Executable)"
+        $script:PythonPath = $pythonInfo.Executable
+        $script:PythonSource = $pythonInfo.Source
+    }
+    catch {
+        Append-Log $_.Exception.Message
+    }
     [void]$form.ShowDialog()
 }
 
