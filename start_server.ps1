@@ -318,17 +318,19 @@ function Test-DataRoot {
     }
 
     $requiredDirs = @(
-        "前10大主产国汇总",
-        "进口来源情况",
-        "风险分级结果",
-        "短期替代潜能",
-        "长期替代潜能"
+        "总览页面\前10大主产国汇总",
+        "总览页面\进口来源情况",
+        "风险页面\风险分级结果",
+        "风险页面\破坏性-传播性-脆弱性",
+        "替代产能页面\短期替代潜能",
+        "替代产能页面\长期替代潜能",
+        "替代产能页面\替代流向"
     )
 
     $missing = @()
-    foreach ($dirName in $requiredDirs) {
-        if (-not (Test-Path (Join-Path $DataRoot $dirName))) {
-            $missing += $dirName
+    foreach ($relativePath in $requiredDirs) {
+        if (-not (Test-Path (Join-Path $DataRoot $relativePath))) {
+            $missing += $relativePath
         }
     }
 
@@ -338,8 +340,14 @@ function Test-DataRoot {
   $($missing -join "`n  ")
 当前目录：$DataRoot
 
-请将实验室 Excel 结果放到项目 data 文件夹下，例如：
-  $DataRoot\前10大主产国汇总
+请按页面分类放置 Excel，完整结构为：
+  $DataRoot\总览页面\前10大主产国汇总
+  $DataRoot\总览页面\进口来源情况
+  $DataRoot\替代产能页面\短期替代潜能
+  $DataRoot\替代产能页面\长期替代潜能
+  $DataRoot\替代产能页面\替代流向
+  $DataRoot\风险页面\风险分级结果
+  $DataRoot\风险页面\破坏性-传播性-脆弱性
 或点击“浏览”选择正确路径。
 "@
     }
@@ -806,7 +814,7 @@ function Start-LauncherGui {
     $browseButton.Size = New-Object System.Drawing.Size(70, 30)
     $browseButton.Add_Click({
         $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-        $dialog.Description = "选择包含实验室 Excel 结果的目录（默认为项目 data 文件夹）"
+        $dialog.Description = "选择数据根目录（需包含 总览页面 / 替代产能页面 / 风险页面）"
         if (Test-Path $script:DataRootInput.Text) {
             $dialog.SelectedPath = $script:DataRootInput.Text
         }

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>粮食产品国际产能分布系统</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=20260724-radar-ui-1" />
   </head>
   <body>
     <div class="app-shell" id="appShell">
@@ -39,22 +39,29 @@
         </header>
 
         <main class="dashboard-grid">
-          <section class="glass-panel map-panel">
+          <section class="glass-panel map-panel" id="mapPanel">
             <div class="panel-head">
               <div>
                 <p class="panel-kicker" id="mapKicker"></p>
                 <h3 id="mapTitle"></h3>
+                <p class="panel-definition hidden" id="mapDefinition"></p>
               </div>
               <div class="panel-actions">
                 <div class="year-switcher" id="yearSwitcher"></div>
                 <div class="legend" id="legend"></div>
               </div>
             </div>
-            <div class="map-stage">
+            <div class="map-stage" id="mapStage">
+              <div class="map-controls" aria-label="地图缩放控制">
+                <button class="map-control-btn" id="mapZoomIn" type="button" aria-label="放大地图">+</button>
+                <button class="map-control-btn" id="mapZoomOut" type="button" aria-label="缩小地图">-</button>
+                <button class="map-control-btn map-control-btn--reset" id="mapResetView" type="button" aria-label="重置地图视图">重置</button>
+              </div>
+              <div class="map-focus" id="mapFocus"></div>
               <svg id="worldMap" viewBox="0 0 1000 520" aria-label="world map"></svg>
               <div id="mapTooltip" class="map-tooltip hidden"></div>
             </div>
-            <div class="map-footer">
+            <div class="map-footer" id="mapFooter">
               <p class="map-caption" id="mapCaption"></p>
               <div class="metric-strip" id="heroMetrics"></div>
             </div>
@@ -78,7 +85,14 @@
       </section>
     </div>
 
-    <script src="./data.js"></script>
-    <script src="./app.js"></script>
+    <div class="modal-shell hidden" id="detailModal" aria-hidden="true">
+      <div class="modal-backdrop" data-close-modal="true"></div>
+      <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="detailModalTitle">
+        <button class="modal-close" id="detailModalClose" type="button" aria-label="关闭详情">×</button>
+        <div class="modal-body" id="detailModalBody"></div>
+      </section>
+    </div>
+    <script src="./data.js?v=20260724-skip-zero-imports-1"></script>
+    <script src="./app.js?v=20260724-radar-ui-1"></script>
   </body>
 </html>
