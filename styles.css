@@ -240,6 +240,484 @@ p {
   gap: 12px;
 }
 
+.capacity-dashboard {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.72fr) minmax(280px, 0.82fr);
+  grid-template-rows: minmax(280px, 1.2fr) minmax(220px, 0.8fr);
+  gap: 12px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.trade-dashboard {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.72fr) minmax(280px, 0.82fr);
+  grid-template-rows: auto minmax(240px, 1fr) minmax(220px, 0.85fr);
+  gap: 12px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.trade-metrics {
+  grid-column: 1 / 3;
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.trade-metric-card {
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: var(--shadow);
+}
+
+.trade-metric-label {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.trade-metric-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.trade-metric-value-row strong {
+  font-size: 28px;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.trade-metric-value-row span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.trade-metric-yoy {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.trade-metric-yoy.is-up {
+  color: #1f6b45;
+}
+
+.trade-metric-yoy.is-down {
+  color: #b93e34;
+}
+
+.trade-map-panel {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.trade-rank-panel {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.trade-detail-panel {
+  grid-column: 3;
+  grid-row: 1 / 4;
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.trade-trend-panel {
+  grid-column: 1 / 3;
+  grid-row: 3;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.trade-overall-charts {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.trade-map-panel,
+.trade-rank-panel,
+.trade-detail-panel,
+.trade-trend-panel {
+  min-height: 0;
+  padding: 14px 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.trade-map-panel {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.trade-rank-panel {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.trade-map-panel.is-map-zoomed .map-controls,
+.trade-map-stage:hover .map-controls {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+  pointer-events: auto;
+}
+
+#tradeWorldMap {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.capacity-map-panel {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.capacity-rank-panel {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.capacity-detail-panel {
+  grid-column: 3;
+  grid-row: 1 / 3;
+}
+
+.capacity-heatmap-panel {
+  grid-column: 1 / 3;
+  grid-row: 2;
+}
+
+.capacity-map-actions {
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+  align-content: start;
+}
+
+.capacity-map-actions .year-switcher {
+  justify-content: flex-end;
+}
+
+.capacity-dependency-card {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(31, 107, 69, 0.12), rgba(31, 107, 69, 0.05));
+  border: 1px solid rgba(31, 107, 69, 0.18);
+  text-align: left;
+}
+
+.capacity-dependency-label {
+  font-size: 12px;
+  color: #5a6b5d;
+  margin-bottom: 4px;
+}
+
+.capacity-dependency-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: #1f6b45;
+  line-height: 1.1;
+}
+
+.capacity-map-panel,
+.capacity-rank-panel,
+.capacity-detail-panel,
+.capacity-heatmap-panel {
+  min-height: 0;
+  padding: 14px 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.capacity-map-panel {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.capacity-map-legend {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 3;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 8px 7px;
+  border-radius: 14px;
+  background: rgba(255, 251, 246, 0.88);
+  border: 1px solid rgba(31, 107, 69, 0.14);
+  box-shadow: 0 8px 20px rgba(34, 51, 39, 0.08);
+  font-size: 11px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.capacity-map-legend-bar {
+  width: 10px;
+  height: 78px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #145536, #3f8f5c, #d8eadf);
+}
+
+.capacity-map-stage {
+  min-height: 220px;
+}
+
+.capacity-footnote {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.capacity-rank-panel {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.capacity-rank-table-wrap {
+  min-height: 0;
+  overflow: auto;
+}
+
+.capacity-rank-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.capacity-rank-table th,
+.capacity-rank-table td {
+  padding: 9px 8px;
+  text-align: left;
+  border-bottom: 1px solid rgba(45, 79, 53, 0.08);
+}
+
+.capacity-rank-table th {
+  color: var(--muted);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  background: rgba(255, 251, 246, 0.96);
+  z-index: 1;
+}
+
+.capacity-rank-table .th-unit {
+  font-weight: 400;
+  font-size: 11px;
+}
+
+.capacity-rank-table tbody tr {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.capacity-rank-table tbody tr:hover,
+.capacity-rank-table tbody tr.is-active {
+  background: rgba(31, 107, 69, 0.08);
+}
+
+.capacity-rank-index {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #1f6b45;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.capacity-detail-panel {
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+}
+
+.capacity-detail-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.capacity-detail-section h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #314338;
+}
+
+.capacity-basic-list {
+  display: grid;
+  gap: 8px;
+}
+
+.capacity-basic-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(45, 79, 53, 0.08);
+  font-size: 13px;
+}
+
+.capacity-basic-row span {
+  color: var(--muted);
+}
+
+.capacity-basic-row strong {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.capacity-detail-section--charts {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.capacity-trend-stack {
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  gap: 8px;
+}
+
+.capacity-trend-card {
+  padding: 8px 8px 4px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(45, 79, 53, 0.08);
+}
+
+.capacity-trend-card--interactive {
+  cursor: pointer;
+}
+
+.capacity-trend-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #4d5b50;
+  margin-bottom: 2px;
+  padding: 0 4px;
+}
+
+.capacity-heatmap-panel {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.capacity-heatmap-legend {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.capacity-heat-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.capacity-heat-legend-item i {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.capacity-heatmap-wrap {
+  min-height: 0;
+  overflow: auto;
+  border-radius: 14px;
+  border: 1px solid rgba(45, 79, 53, 0.08);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.capacity-heatmap-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.capacity-heatmap-table th,
+.capacity-heatmap-table td {
+  padding: 7px 6px;
+  text-align: center;
+  border-bottom: 1px solid rgba(45, 79, 53, 0.06);
+  white-space: nowrap;
+}
+
+.capacity-heatmap-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(248, 250, 246, 0.96);
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.capacity-heatmap-table tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  text-align: left;
+  padding-left: 12px;
+  background: rgba(248, 250, 246, 0.96);
+  font-weight: 600;
+  color: #2c3a30;
+}
+
+.capacity-heatmap-table td.is-empty {
+  color: #9aa59c;
+}
+
+.capacity-rank-marker text {
+  pointer-events: none;
+}
+
+@media (max-width: 1280px) {
+  .capacity-dashboard,
+  .trade-dashboard {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+
+  .capacity-map-panel,
+  .capacity-rank-panel,
+  .capacity-detail-panel,
+  .capacity-heatmap-panel,
+  .trade-metrics,
+  .trade-map-panel,
+  .trade-rank-panel,
+  .trade-detail-panel,
+  .trade-trend-panel {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .trade-metrics,
+  .trade-overall-charts {
+    grid-template-columns: 1fr;
+  }
+}
+
+
 .dashboard-topbar {
   display: flex;
   justify-content: space-between;
@@ -302,7 +780,7 @@ p {
 }
 
 .alt-rank-row--flow {
-  grid-template-columns: 28px minmax(0, 1fr);
+  grid-template-columns: 28px minmax(0, 1fr) 72px;
 }
 
 .alt-rank-meta {
@@ -656,18 +1134,6 @@ p {
   line-height: 1.08;
 }
 
-.panel-definition {
-  margin-top: 8px;
-  max-width: 780px;
-  font-size: 12px;
-  line-height: 1.55;
-  color: #5c675d;
-}
-
-.panel-definition.hidden {
-  display: none;
-}
-
 .legend-item {
   display: inline-flex;
   align-items: center;
@@ -725,6 +1191,15 @@ p {
   user-select: none;
 }
 
+#capacityWorldMap {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
 .map-controls {
   position: absolute;
   right: 16px;
@@ -749,7 +1224,9 @@ p {
     filter 320ms ease;
 }
 
-.map-panel.is-map-zoomed .map-controls {
+.map-panel.is-map-zoomed .map-controls,
+.capacity-map-panel.is-map-zoomed .map-controls,
+.capacity-map-stage:hover .map-controls {
   opacity: 1;
   transform: translateY(0);
   filter: blur(0);
@@ -885,6 +1362,13 @@ p {
   stroke: #102815;
   stroke-width: 1.7;
   filter: brightness(1.02) saturate(1.05);
+}
+
+.map-panel--alternative .country-shape:hover,
+.map-panel--alternative .country-shape.is-active {
+  stroke: rgba(31, 107, 69, 0.22);
+  stroke-width: 2.8;
+  filter: none;
 }
 
 .country-shape.is-hidden {
@@ -1114,39 +1598,6 @@ p {
   color: #4f5d51;
 }
 
-.metric-card--risk-year {
-  gap: 10px;
-}
-
-.risk-year-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.risk-year-item {
-  border-radius: 14px;
-  padding: 10px 8px;
-  background: rgba(247, 250, 247, 0.92);
-  border: 1px solid rgba(45, 79, 53, 0.08);
-  text-align: center;
-}
-
-.risk-year-item span {
-  display: block;
-  font-size: 11px;
-  color: var(--muted);
-  letter-spacing: 0.08em;
-}
-
-.risk-year-item strong {
-  display: block;
-  margin-top: 6px;
-  font-size: 18px;
-  line-height: 1;
-  color: var(--ink);
-}
-
 .side-panel {
   padding: 14px;
   display: grid;
@@ -1274,10 +1725,33 @@ p {
 }
 
 .alt-rank-value {
-  font-size: 13px;
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  align-content: center;
+  min-height: 42px;
+  padding: 5px 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(45, 79, 53, 0.16);
+  background: rgba(255, 255, 255, 0.92);
+  box-sizing: border-box;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.alt-rank-value-label {
+  font-size: 10px;
   line-height: 1;
-  font-weight: 700;
-  text-align: right;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+.alt-rank-value-num {
+  font-size: 13px;
+  line-height: 1.1;
+  font-weight: 750;
+  color: #173b27;
 }
 
 .alt-advice-copy {
@@ -1903,14 +2377,6 @@ p {
   line-height: 1.25;
 }
 
-.chart-subgrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  min-width: 0;
-}
-
-.mini-chart,
 .single-chart {
   border-radius: 14px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(247, 250, 247, 0.88) 100%);
@@ -2059,7 +2525,6 @@ p {
   white-space: nowrap;
 }
 
-.mini-chart-title,
 .single-chart-title {
   margin-bottom: 6px;
   font-size: 12px;
@@ -2695,10 +3160,6 @@ p {
   .detail-highlights,
   .modal-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .chart-subgrid {
-    grid-template-columns: 1fr;
   }
 
   .map-stage {

@@ -5,7 +5,7 @@ import { FileBlob, SpreadsheetFile } from "@oai/artifact-tool";
 
 const projectDir = path.resolve(import.meta.dirname, "..");
 const dataRoot = process.env.CROPSAFE_DATA_ROOT || path.join(projectDir, "data");
-const outputPath = path.join(projectDir, "data.js");
+const outputPath = path.join(projectDir, "scripts", "data.js");
 const currentData = await loadCurrentData(outputPath);
 
 function resolveExisting(...candidates) {
@@ -16,12 +16,16 @@ function resolveExisting(...candidates) {
 }
 
 // data/ 按页面分目录：
-//   总览页面/{前10大主产国汇总,进口来源情况}
+//   产能页面 / 贸易页面
 //   替代产能页面/{短期替代潜能,长期替代潜能,替代流向}
 //   风险页面/{风险分级结果,破坏性-传播性-脆弱性}
 const dirs = {
-  producers: resolveExisting(path.join(dataRoot, "总览页面", "前10大主产国汇总")),
-  imports: resolveExisting(path.join(dataRoot, "总览页面", "进口来源情况")),
+  producers: resolveExisting(
+    path.join(dataRoot, "产能页面"),
+  ),
+  imports: resolveExisting(
+    path.join(dataRoot, "贸易页面"),
+  ),
   risk: resolveExisting(path.join(dataRoot, "风险页面", "风险分级结果")),
   dtv: resolveExisting(path.join(dataRoot, "风险页面", "破坏性-传播性-脆弱性")),
   shortAlt: resolveExisting(path.join(dataRoot, "替代产能页面", "短期替代潜能")),
@@ -30,12 +34,21 @@ const dirs = {
 };
 
 const crops = [
-  ["soybean", "大豆", "大豆前10主产国汇总(soybean_top10_producers).xlsx", "中国大豆进口分析(china_soybean_import_analysis).xlsx", "大豆风险分级（soybean_risk_classification）.xlsx", "大豆短期替代潜能（soybean_st_sub_potential）.xlsx", "大豆长期替代潜能（soybean_lt_sub_potential）.xlsx"],
-  ["corn", "玉米", "玉米前10主产国汇总(maize_top10_producers).xlsx", "中国玉米进口分析(china_maize_import_analysis).xlsx", "玉米风险分级（corn_risk_classification）.xlsx", "玉米短期替代潜能（corn_st_sub_potential）.xlsx", "玉米长期替代潜能（corn_lt_sub_potential）.xlsx"],
-  ["wheat", "小麦", "小麦前10主产国汇总(wheat_top10_producers).xlsx", "中国小麦进口分析(china_wheat_import_analysis).xlsx", "小麦风险分级（wheat_risk_classification）.xlsx", "小麦短期替代潜能（wheat_st_sub_potential）.xlsx", "小麦长期替代潜能（wheat_lt_sub_potential）.xlsx"],
-  ["barley", "大麦", "大麦前10主产国汇总(barley_top10_producers).xlsx", "中国大麦进口分析(china_barley_import_analysis).xlsx", "大麦风险分级（barley_risk_classification）.xlsx", "大麦短期替代潜能（barley_st_sub_potential）.xlsx", "大麦长期替代潜能（barley_lt_sub_potential）.xlsx"],
-  ["sorghum", "高粱", "高粱前10主产国汇总(sorghum_top10_producers).xlsx", "中国高粱进口分析(china_sorghum_import_analysis).xlsx", "高粱风险分级（sorghum_risk_classification）.xlsx", "高粱短期替代潜能（sorghum_st_sub_potential）.xlsx", "高粱长期替代潜能（sorghum_lt_sub_potential）.xlsx"],
-].map(([id, name, producer, imports, risk, short, long]) => ({ id, name, producer, imports, risk, short, long }));
+  ["soybean", "大豆", "大豆前10主产国汇总(2005-2024).xlsx", "中国大豆进口分析_2005_2024.xlsx", "中国大豆进口总览指标_2005_2024.xlsx", "大豆风险分级（soybean_risk_classification）.xlsx", "大豆短期替代潜能（soybean_st_sub_potential）.xlsx", "大豆长期替代潜能（soybean_lt_sub_potential）.xlsx"],
+  ["corn", "玉米", "玉米前10主产国汇总(2005-2024).xlsx", "中国玉米进口分析_2005_2024.xlsx", "中国玉米进口总览指标_2005_2024.xlsx", "玉米风险分级（corn_risk_classification）.xlsx", "玉米短期替代潜能（corn_st_sub_potential）.xlsx", "玉米长期替代潜能（corn_lt_sub_potential）.xlsx"],
+  ["wheat", "小麦", "小麦前10主产国汇总(2005-2024).xlsx", "中国小麦进口分析_2005_2024.xlsx", "中国小麦进口总览指标_2005_2024.xlsx", "小麦风险分级（wheat_risk_classification）.xlsx", "小麦短期替代潜能（wheat_st_sub_potential）.xlsx", "小麦长期替代潜能（wheat_lt_sub_potential）.xlsx"],
+  ["barley", "大麦", "大麦前10主产国汇总(2005-2024).xlsx", "中国大麦进口分析_2005_2024.xlsx", "中国大麦进口总览指标_2005_2024.xlsx", "大麦风险分级（barley_risk_classification）.xlsx", "大麦短期替代潜能（barley_st_sub_potential）.xlsx", "大麦长期替代潜能（barley_lt_sub_potential）.xlsx"],
+  ["sorghum", "高粱", "高粱前10主产国汇总(2005-2024).xlsx", "中国高粱进口分析_2005_2024.xlsx", "中国高粱进口总览指标_2005_2024.xlsx", "高粱风险分级（sorghum_risk_classification）.xlsx", "高粱短期替代潜能（sorghum_st_sub_potential）.xlsx", "高粱长期替代潜能（sorghum_lt_sub_potential）.xlsx"],
+].map(([id, name, producer, imports, importOverview, risk, short, long]) => ({
+  id, name, producer, imports, importOverview, risk, short, long,
+}));
+
+function pickField(row, ...keys) {
+  for (const key of keys) {
+    if (row[key] !== null && row[key] !== undefined && row[key] !== "") return row[key];
+  }
+  return null;
+}
 
 const shortTiers = { 高: 1, 较高: 1, 中: 2, 较低: 3, 低: 3, 无替代能力: 4 };
 const longTiers = { 极高: 1, 高: 1, 较高: 2, 中: 2, 较低: 3, 低: 3, 无替代能力: 4 };
@@ -92,31 +105,15 @@ async function firstSheetRecords(file, headerRow = 1) {
   return records(workbook.worksheets.getItem(names[0]).getUsedRange(true).values, headerRow);
 }
 
-async function yearlyRecords(file) {
+async function yearlyRecords(file, headerRow = 1) {
   const workbook = await openWorkbook(file);
   const output = [];
   for (const name of await sheetNames(workbook)) {
     const match = String(name).match(/(20\d{2})/);
     if (!match) continue;
-    records(workbook.worksheets.getItem(name).getUsedRange(true).values).forEach((row) => {
+    records(workbook.worksheets.getItem(name).getUsedRange(true).values, headerRow).forEach((row) => {
       output.push({ ...row, year: Number(match[1]) });
     });
-  }
-  return output;
-}
-
-async function loadMetric(prefix, suffix, token, valueKey) {
-  const output = {};
-  const folder = path.join(dataRoot, "风险页面", "破坏性-传播性-脆弱性结果", `${prefix}${suffix}`);
-  const files = await fs.readdir(folder);
-  for (const year of [2022, 2023, 2024]) {
-    const file = files.find((name) => name.includes(String(year)) && name.includes(token));
-    if (!file) throw new Error(`未找到 ${prefix}${suffix}${year} 数据`);
-    for (const row of await firstSheetRecords(path.join(folder, file))) {
-      if (!row.country) continue;
-      output[row.country] ||= {};
-      output[row.country][year] = round4(row[valueKey]);
-    }
   }
   return output;
 }
@@ -174,8 +171,11 @@ async function loadUpdatedDtv(cropName) {
 }
 
 async function loadExternalDependency(cropName, years) {
-  const file = path.join(dirs.imports, "对外进口依赖度.xlsx");
-  if (!fsSync.existsSync(file)) return null;
+  const file = [
+    path.join(dirs.producers, "对外进口依赖度.xlsx"),
+    path.join(dirs.imports, "对外进口依赖度.xlsx"),
+  ].find((candidate) => fsSync.existsSync(candidate));
+  if (!file) return null;
 
   const workbook = await openWorkbook(file);
   const names = await sheetNames(workbook);
@@ -189,6 +189,36 @@ async function loadExternalDependency(cropName, years) {
   return years.map((year) => byYear[year] ?? null);
 }
 
+async function loadImportOverviewMetrics(file, years) {
+  if (!fsSync.existsSync(file)) {
+    return {
+      volume: years.map(() => null),
+      value: years.map(() => null),
+      price: years.map(() => null),
+      volumeYoy: years.map(() => null),
+      valueYoy: years.map(() => null),
+      priceYoy: years.map(() => null),
+    };
+  }
+  const rows = await firstSheetRecords(file, 1);
+  const byYear = Object.fromEntries(rows
+    .filter((row) => row.year !== null && row.year !== undefined)
+    .map((row) => [Number(row.year), row]));
+  return {
+    volume: years.map((year) => round4(byYear[year]?.total_volume_10kt)),
+    value: years.map((year) => round4(byYear[year]?.total_value_musd)),
+    price: years.map((year) => round4(byYear[year]?.weighted_price_usd_per_ton)),
+    volumeYoy: years.map((year) => round4(byYear[year]?.volume_yoy_pct)),
+    valueYoy: years.map((year) => round4(byYear[year]?.value_yoy_pct)),
+    priceYoy: years.map((year) => round4(byYear[year]?.price_yoy_pct)),
+  };
+}
+
+async function loadImportOverviewTrend(file, years) {
+  const metrics = await loadImportOverviewMetrics(file, years);
+  return metrics.volume.map((value) => (value === null ? null : round4(value / 100)));
+}
+
 function byCountryAndYear(rows, countryKey) {
   const output = {};
   for (const row of rows) {
@@ -199,17 +229,46 @@ function byCountryAndYear(rows, countryKey) {
 }
 
 async function buildProduct(config, shortFlows, longFlows) {
-  const producerRows = await yearlyRecords(path.join(dirs.producers, config.producer));
-  const importRows = await yearlyRecords(path.join(dirs.imports, config.imports));
+  const englishToken = config.id === "corn" ? "maize" : config.id;
+  const producerFile = resolveExisting(
+    path.join(dirs.producers, config.producer),
+    path.join(dirs.producers, `${config.name}前10主产国汇总(${englishToken}_top10_producers).xlsx`),
+  );
+  const importFile = resolveExisting(
+    path.join(dirs.imports, config.imports),
+    path.join(dirs.imports, `中国${config.name}进口分析(china_${englishToken}_import_analysis).xlsx`),
+  );
+  const overviewFile = path.join(dirs.imports, config.importOverview);
+
+  // 产能表仅中文表头；贸易分析表第 2 行为英文键名。
+  const producerRows = (await yearlyRecords(producerFile, 0)).map((row) => ({
+    ...row,
+    country: pickField(row, "country", "国家"),
+    rank: pickField(row, "rank", "排名"),
+    production_10kt: pickField(row, "production_10kt", "产量_万吨"),
+    area_10kha: pickField(row, "area_10kha", "面积_万公顷"),
+    yield_t_per_ha: pickField(row, "yield_t_per_ha", "单产_吨每公顷"),
+  })).filter((row) => row.country);
+  const importRows = await yearlyRecords(importFile);
   const riskRows = await firstSheetRecords(path.join(dirs.risk, config.risk));
   const shortRows = await firstSheetRecords(path.join(dirs.shortAlt, config.short));
   const longRows = await firstSheetRecords(path.join(dirs.longAlt, config.long));
   const updatedDtv = await loadUpdatedDtv(config.name);
   const years = [...new Set(producerRows.map((row) => row.year))].sort();
   const importedDependency = await loadExternalDependency(config.name, years);
+  const tradeOverview = await loadImportOverviewMetrics(overviewFile, years);
+  const overviewImportTrend = tradeOverview.volume.some((value) => value !== null)
+    ? tradeOverview.volume.map((value) => (value === null ? null : round4(value / 100)))
+    : null;
 
   const producerLookup = byCountryAndYear(producerRows, "country");
   const producers = Object.fromEntries(Object.entries(producerLookup).map(([country, entries]) => [country, {
+    rank: years.map((year) => {
+      if (!entries[year]) return null;
+      const rank = Number(entries[year].rank);
+      return Number.isFinite(rank) && rank > 0 && rank <= 10 ? rank : null;
+    }),
+    // 产量/面积按百万吨、百万公顷存储（万吨÷100），单产保持吨/公顷。
     output: years.map((year) => entries[year] ? round4(Number(entries[year].production_10kt || 0) / 100) : null),
     area: years.map((year) => entries[year] ? round4(Number(entries[year].area_10kha || 0) / 100) : null),
     yield: years.map((year) => entries[year] ? round4(entries[year].yield_t_per_ha || 0) : null),
@@ -218,14 +277,19 @@ async function buildProduct(config, shortFlows, longFlows) {
   const importLookup = byCountryAndYear(importRows, "importer");
   const imports = Object.fromEntries(Object.entries(importLookup).map(([country, entries]) => [country, {
     volume: years.map((year) => positiveMetricOrNull(entries[year]?.import_volume_10kt, 1 / 100)),
-    price: years.map((year) => positiveMetricOrNull(entries[year]?.price_usd_per_kg, 1000)),
+    value: years.map((year) => positiveMetricOrNull(entries[year]?.trade_value_musd, 1)),
+    price: years.map((year) => {
+      const perTon = positiveMetricOrNull(entries[year]?.price_usd_per_ton, 1);
+      if (perTon !== null) return perTon;
+      return positiveMetricOrNull(entries[year]?.price_usd_per_kg, 1000);
+    }),
     dependency: years.map((year) => positiveMetricOrNull(entries[year]?.import_concentration_pct, 1 / 100)),
   }]));
 
   const productionTrend = years.map((year) => round4(
     producerRows.filter((row) => row.year === year).reduce((sum, row) => sum + Number(row.production_10kt || 0), 0) / 100,
   ));
-  const importTrend = years.map((year) => round4(
+  const importTrend = overviewImportTrend ?? years.map((year) => round4(
     importRows.filter((row) => row.year === year).reduce((sum, row) => sum + Number(row.import_volume_10kt || 0), 0) / 100,
   ));
 
@@ -292,6 +356,7 @@ async function buildProduct(config, shortFlows, longFlows) {
     years: years.map(String),
     productionTrend,
     importTrend,
+    tradeOverview,
     producers,
     imports,
     risk,

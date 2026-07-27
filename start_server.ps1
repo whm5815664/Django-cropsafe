@@ -318,8 +318,6 @@ function Test-DataRoot {
     }
 
     $requiredDirs = @(
-        "总览页面\前10大主产国汇总",
-        "总览页面\进口来源情况",
         "风险页面\风险分级结果",
         "风险页面\破坏性-传播性-脆弱性",
         "替代产能页面\短期替代潜能",
@@ -328,6 +326,11 @@ function Test-DataRoot {
     )
 
     $missing = @()
+    $hasCapacity = (Test-Path (Join-Path $DataRoot "产能页面")) -or (Test-Path (Join-Path $DataRoot "总览页面\产能")) -or (Test-Path (Join-Path $DataRoot "总览页面\前10大主产国汇总"))
+    $hasTrade = (Test-Path (Join-Path $DataRoot "贸易页面")) -or (Test-Path (Join-Path $DataRoot "总览页面\贸易")) -or (Test-Path (Join-Path $DataRoot "总览页面\进口来源情况"))
+    if (-not $hasCapacity) { $missing += "产能页面" }
+    if (-not $hasTrade) { $missing += "贸易页面" }
+
     foreach ($relativePath in $requiredDirs) {
         if (-not (Test-Path (Join-Path $DataRoot $relativePath))) {
             $missing += $relativePath
@@ -341,8 +344,8 @@ function Test-DataRoot {
 当前目录：$DataRoot
 
 请按页面分类放置 Excel，完整结构为：
-  $DataRoot\总览页面\前10大主产国汇总
-  $DataRoot\总览页面\进口来源情况
+  $DataRoot\产能页面
+  $DataRoot\贸易页面
   $DataRoot\替代产能页面\短期替代潜能
   $DataRoot\替代产能页面\长期替代潜能
   $DataRoot\替代产能页面\替代流向
@@ -453,7 +456,7 @@ function Start-ConsoleImport {
     Write-Host "正在从实验室 Excel 结果重建前端数据..."
     Write-Host "项目目录: $root"
     Write-Host "数据目录: $ImportDataRoot"
-    Write-Host "输出文件: $(Join-Path $root 'data.js')"
+    Write-Host "输出文件: $(Join-Path $root 'scripts\data.js')"
 
     try {
         $pythonInfo = Resolve-ProjectPython -ProjectRoot $root
@@ -721,7 +724,7 @@ function Start-LauncherGui {
             if ($result.ExitCode -eq 0) {
                 Append-Log "数据导入完成。"
                 [System.Windows.Forms.MessageBox]::Show(
-                    "数据已写入 data.js",
+                    "数据已写入 scripts\data.js",
                     "导入成功",
                     [System.Windows.Forms.MessageBoxButtons]::OK,
                     [System.Windows.Forms.MessageBoxIcon]::Information
@@ -814,7 +817,7 @@ function Start-LauncherGui {
     $browseButton.Size = New-Object System.Drawing.Size(70, 30)
     $browseButton.Add_Click({
         $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-        $dialog.Description = "选择数据根目录（需包含 总览页面 / 替代产能页面 / 风险页面）"
+        $dialog.Description = "选择数据根目录（需包含 产能页面 / 贸易页面 / 替代产能页面 / 风险页面）"
         if (Test-Path $script:DataRootInput.Text) {
             $dialog.SelectedPath = $script:DataRootInput.Text
         }

@@ -17,7 +17,7 @@ from pathlib import Path
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 BUILDER = Path(__file__).with_name("build_data.mjs")
-OUTPUT = PROJECT_DIR / "data.js"
+OUTPUT = PROJECT_DIR / "scripts" / "data.js"
 DEFAULT_DATA_ROOT = PROJECT_DIR / "data"
 
 
@@ -117,16 +117,21 @@ def remove_temporary_link(link: Path, created: bool) -> None:
 
 
 def validate_inputs(data_root: Path) -> None:
+    capacity_dir = first_existing_dir([data_root / "产能页面"])
+    trade_dir = first_existing_dir([data_root / "贸易页面"])
     required = [
-        data_root / "总览页面" / "前10大主产国汇总",
-        data_root / "总览页面" / "进口来源情况",
         data_root / "风险页面" / "风险分级结果",
         data_root / "风险页面" / "破坏性-传播性-脆弱性",
         data_root / "替代产能页面" / "短期替代潜能",
         data_root / "替代产能页面" / "长期替代潜能",
         data_root / "替代产能页面" / "替代流向",
     ]
-    missing = [str(path) for path in required if not path.is_dir()]
+    missing: list[str] = []
+    if capacity_dir is None:
+        missing.append(str(data_root / "产能页面"))
+    if trade_dir is None:
+        missing.append(str(data_root / "贸易页面"))
+    missing.extend(str(path) for path in required if not path.is_dir())
     if missing:
         raise FileNotFoundError("数据目录不完整：\n" + "\n".join(missing))
 

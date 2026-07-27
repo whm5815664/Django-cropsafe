@@ -57,6 +57,11 @@
     India: "印度",
     China: "中国",
     Myanmar: "缅甸",
+    "Viet Nam": "越南",
+    Vietnam: "越南",
+    "Lao People's Dem. Rep.": "老挝",
+    "Lao PDR": "老挝",
+    Laos: "老挝",
     Mexico: "墨西哥",
     Nigeria: "尼日利亚",
     Ethiopia: "埃塞俄比亚",
@@ -92,6 +97,10 @@
     unitedrepoftanzania: ["Tanzania", "United Rep. of Tanzania", "United Republic of Tanzania"],
     unitedrepublicoftanzania: ["Tanzania", "United Rep. of Tanzania", "United Republic of Tanzania"],
     china: ["China"],
+    vietnam: ["Vietnam", "Viet Nam"],
+    laos: ["Laos", "Lao PDR", "Lao People's Dem. Rep."],
+    laopdr: ["Laos", "Lao PDR", "Lao People's Dem. Rep."],
+    laopeoplesdemrep: ["Laos", "Lao PDR", "Lao People's Dem. Rep."],
   };
 
   const WORLD_COUNTRY_LABELS = {
@@ -319,7 +328,8 @@
   };
 
   const MODULES = [
-    { id: "overview", label: "总览" },
+    { id: "production", label: "产能" },
+    { id: "trade", label: "进口贸易" },
     { id: "risk", label: "风险" },
     { id: "alternative", label: "替代" },
   ];
@@ -327,7 +337,7 @@
   const state = {
     view: "landing",
     productId: Object.keys(PRODUCT_META)[0],
-    module: "overview",
+    module: "production",
     selectedCountry: null,
     selectedOverviewYear: null,
     selectedRiskRadarYear: "2024",
@@ -343,6 +353,12 @@
     mapZoomAnimationFrame: null,
     mapDrag: null,
     suppressMapClickUntil: 0,
+    capacityMapViewport: { x: 0, y: 0, width: 1000, height: 520 },
+    capacityMapDrag: null,
+    suppressCapacityMapClickUntil: 0,
+    tradeMapViewport: { x: 0, y: 0, width: 1000, height: 520 },
+    tradeMapDrag: null,
+    suppressTradeMapClickUntil: 0,
   };
 
   const palette = {
@@ -381,7 +397,6 @@
     mapZoomIn: document.getElementById("mapZoomIn"),
     mapZoomOut: document.getElementById("mapZoomOut"),
     mapResetView: document.getElementById("mapResetView"),
-    mapDefinition: document.getElementById("mapDefinition"),
     mapFocus: document.getElementById("mapFocus"),
     mapTooltip: document.getElementById("mapTooltip"),
     detailModal: document.getElementById("detailModal"),
@@ -392,6 +407,53 @@
     detailHighlights: document.getElementById("detailHighlights"),
     chartStack: document.getElementById("chartStack"),
     sidePanel: document.querySelector(".side-panel"),
+    dashboardGrid: document.getElementById("dashboardGrid"),
+    capacityDashboard: document.getElementById("capacityDashboard"),
+    capacityFilters: document.getElementById("capacityFilters"),
+    capacityDependencyLabel: document.getElementById("capacityDependencyLabel"),
+    capacityDependencyValue: document.getElementById("capacityDependencyValue"),
+    capacityMapKicker: document.getElementById("capacityMapKicker"),
+    capacityMapTitle: document.getElementById("capacityMapTitle"),
+    capacityMapCaption: document.getElementById("capacityMapCaption"),
+    capacityMapStage: document.getElementById("capacityMapStage"),
+    capacityWorldMap: document.getElementById("capacityWorldMap"),
+    capacityMapTooltip: document.getElementById("capacityMapTooltip"),
+    capacityMapZoomIn: document.getElementById("capacityMapZoomIn"),
+    capacityMapZoomOut: document.getElementById("capacityMapZoomOut"),
+    capacityMapResetView: document.getElementById("capacityMapResetView"),
+    capacityRankTitle: document.getElementById("capacityRankTitle"),
+    capacityRankBody: document.getElementById("capacityRankBody"),
+    capacityDetailTitle: document.getElementById("capacityDetailTitle"),
+    capacityDetailBadge: document.getElementById("capacityDetailBadge"),
+    capacityBasicTitle: document.getElementById("capacityBasicTitle"),
+    capacityBasicList: document.getElementById("capacityBasicList"),
+    capacityTrendTitle: document.getElementById("capacityTrendTitle"),
+    capacityTrendStack: document.getElementById("capacityTrendStack"),
+    capacityHeatmapTitle: document.getElementById("capacityHeatmapTitle"),
+    capacityHeatmapLegend: document.getElementById("capacityHeatmapLegend"),
+    capacityHeatmapWrap: document.getElementById("capacityHeatmapWrap"),
+    tradeDashboard: document.getElementById("tradeDashboard"),
+    tradeMetrics: document.getElementById("tradeMetrics"),
+    tradeFilters: document.getElementById("tradeFilters"),
+    tradeMapKicker: document.getElementById("tradeMapKicker"),
+    tradeMapTitle: document.getElementById("tradeMapTitle"),
+    tradeMapCaption: document.getElementById("tradeMapCaption"),
+    tradeMapStage: document.getElementById("tradeMapStage"),
+    tradeWorldMap: document.getElementById("tradeWorldMap"),
+    tradeMapTooltip: document.getElementById("tradeMapTooltip"),
+    tradeMapZoomIn: document.getElementById("tradeMapZoomIn"),
+    tradeMapZoomOut: document.getElementById("tradeMapZoomOut"),
+    tradeMapResetView: document.getElementById("tradeMapResetView"),
+    tradeRankTitle: document.getElementById("tradeRankTitle"),
+    tradeRankBody: document.getElementById("tradeRankBody"),
+    tradeDetailTitle: document.getElementById("tradeDetailTitle"),
+    tradeDetailBadge: document.getElementById("tradeDetailBadge"),
+    tradeBasicTitle: document.getElementById("tradeBasicTitle"),
+    tradeBasicList: document.getElementById("tradeBasicList"),
+    tradeTrendTitle: document.getElementById("tradeTrendTitle"),
+    tradeTrendStack: document.getElementById("tradeTrendStack"),
+    tradeOverallTitle: document.getElementById("tradeOverallTitle"),
+    tradeOverallCharts: document.getElementById("tradeOverallCharts"),
   };
 
   const modalTransitionState = {
@@ -519,6 +581,7 @@
     const num = Number(value);
     if (Number.isNaN(num)) return "--";
     if (format === "mt") return formatMt(num);
+    if (format === "wantons") return `${num.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 万吨`;
     if (format === "area") return `${num.toFixed(2)} 万公顷`;
     if (format === "yield") return `${num.toFixed(2)} 吨/公顷`;
     if (format === "price") return `${num.toFixed(0)} 美元/吨`;
@@ -531,6 +594,7 @@
     const num = Number(value);
     if (Number.isNaN(num)) return "--";
     if (format === "mt") return num >= 100 ? num.toFixed(0) : num.toFixed(1);
+    if (format === "wantons") return num >= 1000 ? num.toFixed(0) : num.toFixed(1);
     if (format === "area") return num.toFixed(1);
     if (format === "yield") return num.toFixed(1);
     if (format === "price") return num.toFixed(0);
@@ -550,7 +614,7 @@
   }
 
   function getChartInteractionRoots() {
-    return [els.chartStack, els.detailModalBody].filter(Boolean);
+    return [els.chartStack, els.capacityTrendStack, els.tradeTrendStack, els.tradeOverallCharts, els.detailModalBody].filter(Boolean);
   }
 
   function hideChartTooltip() {
@@ -855,7 +919,7 @@
     els.cropGallery.querySelectorAll("[data-crop]").forEach((card) => {
       card.addEventListener("click", () => {
         state.productId = card.dataset.crop;
-        state.module = "overview";
+        state.module = "production";
         state.selectedCountry = null;
         state.view = "dashboard";
         updateView();
@@ -871,7 +935,13 @@
 
   function createTopbar(product) {
     const meta = getProductMeta(product.id);
-    els.dashboardTitle.textContent = `${meta.name}国际供给总览`;
+    const titleMap = {
+      production: `${meta.name}产能总览`,
+      trade: `中国${meta.name}进口分析`,
+      risk: `${meta.name}风险分析`,
+      alternative: `${meta.name}替代布局`,
+    };
+    els.dashboardTitle.textContent = titleMap[state.module] || `${meta.name}国际供给总览`;
 
     els.productSwitcher.innerHTML = appData.products
       .map((item) => {
@@ -906,14 +976,6 @@
     });
   }
 
-  function getOverviewCountries(product) {
-    const yearIndex = getOverviewYearIndex(product);
-    return Object.entries(product.imports)
-      .sort((a, b) => Number(getSeriesValue(b[1].volume, yearIndex) || 0) - Number(getSeriesValue(a[1].volume, yearIndex) || 0))
-      .slice(0, 5)
-      .map(([country]) => country);
-  }
-
   function getRiskCountries(product) {
     return Object.entries(product.risk)
       .sort((a, b) => b[1].score - a[1].score)
@@ -922,24 +984,6 @@
 
   function getAlternativeCountries(product) {
     return getAlternativeTopCountries(product);
-  }
-
-  function getSelectedCountry(product) {
-    if (state.module === "overview") {
-      const overviewCountries = getOverviewCountries(product);
-      if (state.selectedCountry && overviewCountries.includes(state.selectedCountry)) return state.selectedCountry;
-      return overviewCountries[0] || null;
-    }
-    if (state.module === "risk") return getRiskCountries(product)[0];
-    if (state.module === "alternative") {
-      const alternativeCountries = getAlternativeCountries(product).map((item) => item.country);
-      if (state.selectedCountry && resolveCountryKey(state.selectedCountry, alternativeCountries)) {
-        return resolveCountryKey(state.selectedCountry, alternativeCountries);
-      }
-      return alternativeCountries[0] || null;
-    }
-    if (state.selectedCountry) return state.selectedCountry;
-    return null;
   }
 
   function renderLegend(items) {
@@ -955,458 +999,22 @@
       .join("");
   }
 
-  function renderYearSwitcher(product) {
-    if (state.module !== "overview") {
-      els.yearSwitcher.innerHTML = "";
-      els.yearSwitcher.classList.add("hidden");
-      return;
-    }
-
-    const years = getRecentOverviewYears(product);
-    ensureOverviewYear(product);
-    els.yearSwitcher.classList.remove("hidden");
-    els.yearSwitcher.innerHTML = years
-      .map(
-        (year) => `
-          <button class="year-btn ${String(year) === String(state.selectedOverviewYear) ? "active" : ""}" type="button" data-year="${year}">
-            ${year}年
-          </button>
-        `,
-      )
-      .join("");
-
-    els.yearSwitcher.querySelectorAll("[data-year]").forEach((button) => {
-      button.addEventListener("click", () => {
-        state.selectedOverviewYear = button.dataset.year;
-        state.selectedCountry = null;
-        render();
-      });
-    });
-  }
-
-  function buildHeroMetrics(product) {
-    const cards = [
-      {
-        label: "最新前十主产国产量",
-        value: formatMt(product.overview.latestProduction),
-        note: "主产国汇总结果的最新年度合计值。",
-      },
-      {
-        label: "中国进口总量",
-        value: formatMt(product.overview.chinaImportTotal),
-        note: "进口来源分析结果的最新年度汇总。",
-      },
-      {
-        label: "第一来源集中度",
-        value: formatPct(product.overview.importConcentration),
-        note: `当前第一来源国：${labelCountry(product.overview.topSupplier)}`,
-      },
-      {
-        label: "当前风险提示",
-        value: product.overview.riskHeadline,
-        note: "来自实验室 CI 风险分级结果。",
-      },
-    ];
-
-    els.heroMetrics.innerHTML = cards
-      .map(
-        (card) => `
-          <article class="metric-card">
-            <div class="metric-label">${card.label}</div>
-            <div class="metric-value">${card.value}</div>
-            <div class="metric-note">${card.note}</div>
-          </article>
-        `,
-      )
-      .join("");
-  }
-
-  function buildHeroMetrics(product) {
-    const yearIndex = getOverviewYearIndex(product);
-    const selectedYear = String(state.selectedOverviewYear || product.years.at(yearIndex));
-    const importEntries = Object.entries(product.imports || {});
-    const producerEntries = Object.entries(product.producers || {});
-    const chinaImportTotal = importEntries.reduce((sum, [, info]) => sum + Number(getSeriesValue(info.volume, yearIndex) || 0), 0);
-    const sortedImports = [...importEntries].sort(
-      (a, b) => Number(getSeriesValue(b[1].volume, yearIndex) || 0) - Number(getSeriesValue(a[1].volume, yearIndex) || 0),
-    );
-    const topSupplier = sortedImports[0]?.[0] || product.overview.topSupplier;
-    const topSupplierVolume = Number(getSeriesValue(sortedImports[0]?.[1]?.volume, yearIndex) || 0);
-    const importConcentration = chinaImportTotal ? topSupplierVolume / chinaImportTotal : 0;
-    const totalProduction = producerEntries.reduce((sum, [, info]) => sum + Number(getSeriesValue(info.output, yearIndex) || 0), 0);
-
-    const cards = [
-      {
-        label: `${selectedYear}主产国产量`,
-        value: formatMt(totalProduction),
-        note: "按当前选中年份汇总前十大主产国的产量。",
-      },
-      {
-        label: `${selectedYear}中国进口总量`,
-        value: formatMt(chinaImportTotal),
-        note: "按当前选中年份统计中国进口来源总量。",
-      },
-      {
-        label: `${selectedYear}第一来源集中度`,
-        value: formatPct(importConcentration),
-        note: `当前第一来源国：${labelCountry(topSupplier)}`,
-      },
-      {
-        label: "当前风险提示",
-        value: product.overview.riskHeadline,
-        note: "保持使用实验室当前的综合风险结论。",
-      },
-    ];
-
-    els.heroMetrics.innerHTML = cards
-      .map(
-        (card) => `
-          <article class="metric-card">
-            <div class="metric-label">${card.label}</div>
-            <div class="metric-value">${card.value}</div>
-            <div class="metric-note">${card.note}</div>
-          </article>
-        `,
-      )
-      .join("");
-  }
-
-  function buildHeroMetrics(product) {
-    if (state.module === "risk") {
-      const country = getSelectedCountry(product);
-      const riskKey = resolveCountryKey(country, product.risk);
-      const risk = riskKey ? product.risk[riskKey] : null;
-      const countryLabel = labelCountry(riskKey || country || "该国");
-
-      els.heroMetrics.className = "metric-strip metric-strip--triple";
-      els.heroMetrics.innerHTML = ["2022", "2023", "2024"]
-        .map((year) => {
-          const metrics = getRiskDtvByYear(risk, year);
-          return `
-            <article class="metric-card metric-card--risk-year">
-              <div class="metric-label">${countryLabel} ${year}</div>
-              <div class="risk-year-grid">
-                <div class="risk-year-item">
-                  <span>D</span>
-                  <strong>${formatRiskMetric(metrics.d)}</strong>
-                </div>
-                <div class="risk-year-item">
-                  <span>T</span>
-                  <strong>${formatRiskMetric(metrics.t)}</strong>
-                </div>
-                <div class="risk-year-item">
-                  <span>V</span>
-                  <strong>${formatRiskMetric(metrics.v)}</strong>
-                </div>
-              </div>
-              <div class="metric-note">D 破坏性 / T 传播性 / V 脆弱性</div>
-            </article>
-          `;
-        })
-        .join("");
-      return;
-    }
-
-    const yearIndex = getOverviewYearIndex(product);
-    const selectedYear = String(state.selectedOverviewYear || product.years.at(yearIndex));
-    const importEntries = Object.entries(product.imports || {});
-    const producerEntries = Object.entries(product.producers || {});
-    const chinaImportTotal = importEntries.reduce((sum, [, info]) => sum + Number(getSeriesValue(info.volume, yearIndex) || 0), 0);
-    const sortedImports = [...importEntries].sort(
-      (a, b) => Number(getSeriesValue(b[1].volume, yearIndex) || 0) - Number(getSeriesValue(a[1].volume, yearIndex) || 0),
-    );
-    const topSupplier = sortedImports[0]?.[0] || product.overview.topSupplier;
-    const topSupplierVolume = Number(getSeriesValue(sortedImports[0]?.[1]?.volume, yearIndex) || 0);
-    const importConcentration = chinaImportTotal ? topSupplierVolume / chinaImportTotal : 0;
-    const totalProduction = producerEntries.reduce((sum, [, info]) => sum + Number(getSeriesValue(info.output, yearIndex) || 0), 0);
-
-    const cards = [
-      {
-        label: `${selectedYear}主产国产量`,
-        value: formatMt(totalProduction),
-        note: "按当前选中年份汇总前十大主产国的产量。",
-      },
-      {
-        label: `${selectedYear}中国进口总量`,
-        value: formatMt(chinaImportTotal),
-        note: "按当前选中年份统计中国进口来源总量。",
-      },
-      {
-        label: `${selectedYear}第一来源集中度`,
-        value: formatPct(importConcentration),
-        note: `当前第一来源国：${labelCountry(topSupplier)}`,
-      },
-      {
-        label: "当前风险提示",
-        value: product.overview.riskHeadline,
-        note: "保持使用实验室当前的综合风险结论。",
-      },
-    ];
-
-    els.heroMetrics.className = "metric-strip";
-    els.heroMetrics.innerHTML = cards
-      .map(
-        (card) => `
-          <article class="metric-card">
-            <div class="metric-label">${card.label}</div>
-            <div class="metric-value">${card.value}</div>
-            <div class="metric-note">${card.note}</div>
-          </article>
-        `,
-      )
-      .join("");
-  }
-
-  function renderRiskSide(product, country) {
-    const riskKey = resolveCountryKey(country, product.risk);
-    const risk = riskKey ? product.risk[riskKey] : null;
-    const riskYears = ["2022", "2023", "2024"];
-    const radarSeries = risk
-      ? [
-          { label: "2022", color: "#1f6b45", values: ["2022", "2022", "2022"].map((year, index) => {
-            const metrics = getRiskDtvByYear(risk, year);
-            return [metrics.d, metrics.t, metrics.v][index];
-          }) },
-          { label: "2023", color: "#d2a543", values: ["2023", "2023", "2023"].map((year, index) => {
-            const metrics = getRiskDtvByYear(risk, year);
-            return [metrics.d, metrics.t, metrics.v][index];
-          }) },
-          { label: "2024", color: "#b93e34", values: ["2024", "2024", "2024"].map((year, index) => {
-            const metrics = getRiskDtvByYear(risk, year);
-            return [metrics.d, metrics.t, metrics.v][index];
-          }) },
-        ]
-      : [];
-
-    els.detailTitle.textContent = labelCountry(country);
-    els.detailBadge.textContent = risk ? riskMeta(risk.level).label : "暂无数据";
-    els.detailBadge.style.background = risk ? `${riskMeta(risk.level).color}22` : "rgba(0,0,0,0.06)";
-
-    els.detailHighlights.innerHTML = risk
-      ? `
-        <article class="detail-chip"><div class="detail-chip-label">CI 2022</div><div class="detail-chip-value">${risk.ci2022.toFixed(4)}</div></article>
-        <article class="detail-chip"><div class="detail-chip-label">CI 2023</div><div class="detail-chip-value">${risk.ci2023.toFixed(4)}</div></article>
-        <article class="detail-chip"><div class="detail-chip-label">CI 2024</div><div class="detail-chip-value">${risk.ci2024.toFixed(4)}</div></article>
-        <article class="detail-chip"><div class="detail-chip-label">三年均值</div><div class="detail-chip-value">${risk.score.toFixed(4)}</div></article>
-      `
-      : "";
-
-    els.chartStack.innerHTML = risk
-      ? `
-        <article class="chart-card">
-          <h4>D / T / V 三维雷达图</h4>
-          <div class="single-chart">
-            <div class="single-chart-title">2022-2024 三年对比</div>
-            ${makeRadarChart(radarSeries, { size: 308, radius: 96, maxValue: 3 })}
-          </div>
-        </article>
-        <article class="chart-card">
-          <h4>风险解读</h4>
-          <div class="single-chart risk-level-card risk-level-card--stacked">
-            <div class="risk-level-value" style="color:${riskMeta(risk.level).color};">${riskMeta(risk.level).label}</div>
-            <p class="chart-caption">右侧雷达图展示该国 2022-2024 年的 D 破坏性、T 传播性与 V 脆弱性变化，用于辅助识别风险结构变化。</p>
-            <p class="chart-caption">CI 2022-2024：${risk.ci2022.toFixed(4)} / ${risk.ci2023.toFixed(4)} / ${risk.ci2024.toFixed(4)}</p>
-          </div>
-        </article>
-      `
-      : `<article class="chart-card"><h4>暂无风险数据</h4><p class="chart-caption">请在地图中选择具有风险分级结果的国家。</p></article>`;
-  }
-
-  function renderRiskSide(product, country) {
-    const riskKey = resolveCountryKey(country, product.risk);
-    const risk = riskKey ? product.risk[riskKey] : null;
-    const riskYears = ["2022", "2023", "2024"];
-
-    els.detailTitle.textContent = labelCountry(country);
-    els.detailBadge.textContent = risk ? riskMeta(risk.level).label : "暂无数据";
-    els.detailBadge.style.background = risk ? `${riskMeta(risk.level).color}22` : "rgba(0,0,0,0.06)";
-
-    els.detailHighlights.innerHTML = risk
-      ? `
-        <article class="detail-chip"><div class="detail-chip-label">CI 2022</div><div class="detail-chip-value">${risk.ci2022.toFixed(4)}</div></article>
-        <article class="detail-chip"><div class="detail-chip-label">CI 2023</div><div class="detail-chip-value">${risk.ci2023.toFixed(4)}</div></article>
-        <article class="detail-chip"><div class="detail-chip-label">CI 2024</div><div class="detail-chip-value">${risk.ci2024.toFixed(4)}</div></article>
-        <article class="detail-chip"><div class="detail-chip-label">三年均值</div><div class="detail-chip-value">${risk.score.toFixed(4)}</div></article>
-      `
-      : "";
-
-    const radarSeries = risk
-      ? riskYears.map((year, index) => {
-          const metrics = getRiskDtvByYear(risk, year);
-          const colors = ["#1f6b45", "#d2a543", "#b93e34"];
-          return {
-            label: year,
-            color: colors[index],
-            values: [metrics.d, metrics.t, metrics.v],
-          };
-        })
-      : [];
-
-    els.chartStack.innerHTML = risk
-      ? `
-        <article class="chart-card">
-          <h4>D / T / V 三维雷达图</h4>
-          <div class="single-chart">
-            <div class="single-chart-title">2022-2024 三年结构对比</div>
-            ${makeRadarChart(radarSeries, { size: 308, radius: 96, maxValue: 3 })}
-          </div>
-        </article>
-        <article class="chart-card">
-          <h4>CI 风险解读</h4>
-          <div class="single-chart risk-level-card risk-level-card--stacked">
-            <div class="risk-level-value" style="color:${riskMeta(risk.level).color};">${riskMeta(risk.level).label}</div>
-            <p class="chart-caption">雷达图展示该国 2022-2024 年 D 破坏性、T 传播性、V 脆弱性的结构变化，便于对比不同年份的风险构成。</p>
-            <p class="chart-caption">CI 2022-2024：${risk.ci2022.toFixed(4)} / ${risk.ci2023.toFixed(4)} / ${risk.ci2024.toFixed(4)}</p>
-          </div>
-        </article>
-      `
-      : `<article class="chart-card"><h4>暂无风险数据</h4><p class="chart-caption">请在地图中选择具有风险分级结果的国家。</p></article>`;
-  }
-
-  function buildHeroMetrics(product) {
-    if (state.module === "risk" || state.module === "alternative") {
-      els.heroMetrics.innerHTML = "";
-      els.heroMetrics.className = "metric-strip hidden";
-      return;
-    }
-
-    els.heroMetrics.classList.remove("hidden");
-
-    if (state.module === "risk") {
-      const country = getSelectedCountry(product);
-      const riskKey = resolveCountryKey(country, product.risk);
-      const risk = riskKey ? product.risk[riskKey] : null;
-      const countryLabel = labelCountry(riskKey || country || "该国");
-      const years = ["2022", "2023", "2024"];
-
-      els.heroMetrics.className = "metric-strip metric-strip--triple";
-      els.heroMetrics.innerHTML = years
-        .map((year) => {
-          const metrics = getRiskDtvByYear(risk, year);
-          return `
-            <article class="metric-card metric-card--risk-year">
-              <div class="metric-label">${countryLabel} ${year}</div>
-              <div class="risk-year-grid">
-                <div class="risk-year-item">
-                  <span>D</span>
-                  <strong>${formatRiskMetric(metrics.d)}</strong>
-                </div>
-                <div class="risk-year-item">
-                  <span>T</span>
-                  <strong>${formatRiskMetric(metrics.t)}</strong>
-                </div>
-                <div class="risk-year-item">
-                  <span>V</span>
-                  <strong>${formatRiskMetric(metrics.v)}</strong>
-                </div>
-              </div>
-              <div class="metric-note">D 破坏性 / T 传播性 / V 脆弱性</div>
-            </article>
-          `;
-        })
-        .join("");
-      return;
-    }
-
-    if (state.module === "alternative") {
-      const country = getSelectedCountry(product);
-      const item = getAlternativeSelectedItem(product, country);
-      const topCountries = getAlternativeTopCountries(product);
-      const suggestion = getAlternativeSuggestion(product, item);
-
-      els.heroMetrics.className = "metric-strip";
-      els.heroMetrics.innerHTML = [
-        {
-          label: `${getAlternativeModeLabel()}覆盖国家`,
-          value: `${topCountries.length} 个`,
-          note: `当前界面展示 ${getAlternativeModeLabel()}潜能排名前 10 的国家。`,
-        },
-        {
-          label: `${labelCountry(country || "当前国家")}潜能`,
-          value: item ? item.potential.toFixed(4) : "--",
-          note: item ? `能力分级：${item.tierLabel}` : "当前国家暂无匹配的替代潜能结果。",
-        },
-        {
-          label: "风险等级",
-          value: item ? getAlternativeRiskLabel(product, item.country) : "--",
-          note: "结合前述 CI 风险分级结果进行替代可行性判断。",
-        },
-        {
-          label: "替代建议",
-          value: suggestion.title,
-          note: "当前建议为临时规则版，后续可按你提供的正式分级表替换。",
-        },
-      ]
-        .map(
-          (card) => `
-            <article class="metric-card">
-              <div class="metric-label">${card.label}</div>
-              <div class="metric-value">${card.value}</div>
-              <div class="metric-note">${card.note}</div>
-            </article>
-          `,
-        )
-        .join("");
-      return;
-    }
-
-    const yearIndex = getOverviewYearIndex(product);
-    const selectedYear = String(state.selectedOverviewYear || product.years.at(yearIndex));
-    const importEntries = Object.entries(product.imports || {});
-    const producerEntries = Object.entries(product.producers || {});
-    const chinaImportTotal = importEntries.reduce((sum, [, info]) => sum + Number(getSeriesValue(info.volume, yearIndex) || 0), 0);
-    const sortedImports = [...importEntries].sort(
-      (a, b) => Number(getSeriesValue(b[1].volume, yearIndex) || 0) - Number(getSeriesValue(a[1].volume, yearIndex) || 0),
-    );
-    const topSupplier = sortedImports[0]?.[0] || product.overview.topSupplier;
-    const topSupplierVolume = Number(getSeriesValue(sortedImports[0]?.[1]?.volume, yearIndex) || 0);
-    const importConcentration = chinaImportTotal ? topSupplierVolume / chinaImportTotal : 0;
-    const totalProduction = producerEntries.reduce((sum, [, info]) => sum + Number(getSeriesValue(info.output, yearIndex) || 0), 0);
-
-    const cards = [
-      {
-        label: `${selectedYear}主产国产量`,
-        value: formatMt(totalProduction),
-        note: "按当前选中年份汇总前十大主产国的产量。",
-      },
-      {
-        label: `${selectedYear}中国进口总量`,
-        value: formatMt(chinaImportTotal),
-        note: "按当前选中年份统计中国进口来源总量。",
-      },
-      {
-        label: `${selectedYear}第一来源集中度`,
-        value: formatPct(importConcentration),
-        note: `当前第一来源国：${labelCountry(topSupplier)}`,
-      },
-      {
-        label: "当前风险提示",
-        value: product.overview.riskHeadline,
-        note: "保持使用实验室当前的综合风险结论。",
-      },
-    ];
-
-    els.heroMetrics.className = "metric-strip";
-    els.heroMetrics.innerHTML = cards
-      .map(
-        (card) => `
-          <article class="metric-card">
-            <div class="metric-label">${card.label}</div>
-            <div class="metric-value">${card.value}</div>
-            <div class="metric-note">${card.note}</div>
-          </article>
-        `,
-      )
-      .join("");
-  }
-
   function getSelectedCountry(product) {
-    if (state.module === "overview") {
-      const overviewCountries = getOverviewCountries(product);
-      if (state.selectedCountry && resolveCountryKey(state.selectedCountry, overviewCountries)) {
-        return resolveCountryKey(state.selectedCountry, overviewCountries);
+    if (state.module === "production") {
+      const producers = getProductionTopCountries(product);
+      const names = producers.map((item) => item.country);
+      if (state.selectedCountry && resolveCountryKey(state.selectedCountry, names)) {
+        return resolveCountryKey(state.selectedCountry, names);
       }
-      return overviewCountries[0] || null;
+      return names[0] || null;
+    }
+
+    if (state.module === "trade") {
+      const tradeCountries = getTradeTopCountries(product).map((item) => item.country);
+      if (state.selectedCountry && resolveCountryKey(state.selectedCountry, tradeCountries)) {
+        return resolveCountryKey(state.selectedCountry, tradeCountries);
+      }
+      return tradeCountries[0] || null;
     }
 
     if (state.module === "risk") {
@@ -1426,105 +1034,6 @@
     }
 
     return state.selectedCountry || null;
-  }
-
-  function getModuleCountryStyles(product) {
-    const styleMap = {};
-    let legend = [];
-    let title = "";
-    let kicker = "";
-    let caption = "";
-
-    if (state.module === "overview") {
-      getOverviewCountries(product).forEach((country, index) => {
-        const colors = ["#1f6b45", "#2f7b53", "#4d986a", "#76ac84", "#a0c1a3"];
-        styleMap[country] = { fill: colors[index] };
-      });
-      legend = [
-        { label: "中国前五大进口来源国", color: palette.primary },
-        { label: "其他国家", color: palette.nodata },
-      ];
-      title = `${getProductMeta(product.id).name}进口来源高亮图`;
-      kicker = "自动高亮";
-      caption = "点击高亮国家后，右侧会展示该国生产数据、中国自该国的进口量及价格走势，以及中国对该国进口依赖度近十年变化。";
-    } else if (state.module === "risk") {
-      Object.entries(product.risk).forEach(([country, info]) => {
-        styleMap[country] = { fill: riskMeta(info.level).color };
-      });
-      legend = [
-        { label: "极高风险", color: palette.veryHigh },
-        { label: "高风险", color: palette.high },
-        { label: "中风险", color: palette.medium },
-        { label: "低风险", color: palette.low },
-      ];
-      title = `${getProductMeta(product.id).name}CI 风险地图`;
-      kicker = "风险视图";
-      caption = "展示 2022-2024 年 CI 风险分级结果，可快速识别高风险供应节点。";
-    } else {
-      getAlternativeCountries(product).forEach((item) => {
-        styleMap[item.country] = { fill: tierMeta(item.tier).color };
-      });
-      legend = [
-        { label: "第一梯队", color: palette.tier1 },
-        { label: "第二梯队", color: palette.tier2 },
-        { label: "第三梯队", color: palette.tier3 },
-      ];
-      title = `${getProductMeta(product.id).name}替代产能布局`;
-      kicker = "替代视图";
-      caption = "展示短期替代潜能较高的国家分布，并联动查看长期替代空间。";
-    }
-
-    return { styleMap, legend, title, kicker, caption };
-  }
-
-  function getModuleCountryStyles(product) {
-    const styleMap = {};
-    let legend = [];
-    let title = "";
-    let kicker = "";
-    let caption = "";
-
-    if (state.module === "overview") {
-      const selectedYear = String(state.selectedOverviewYear || product.years.at(getOverviewYearIndex(product)));
-      getOverviewCountries(product).forEach((country, index) => {
-        const colors = ["#1f6b45", "#2f7b53", "#4d986a", "#76ac84", "#a0c1a3"];
-        styleMap[country] = { fill: colors[index] };
-      });
-      legend = [
-        { label: `${selectedYear}年中国前五大进口来源国`, color: palette.primary },
-        { label: "其他国家", color: palette.nodata },
-      ];
-      title = `${selectedYear}年${getProductMeta(product.id).name}进口来源高亮地图`;
-      kicker = "最近三年切换";
-      caption = `点击高亮国家后，右侧会展示该国生产数据、中国自该国进口量与价格走势，以及中国对该国进口依赖度变化。当前查看：${selectedYear} 年。`;
-    } else if (state.module === "risk") {
-      Object.entries(product.risk).forEach(([country, info]) => {
-        styleMap[country] = { fill: riskMeta(info.level).color };
-      });
-      legend = [
-        { label: "极高风险", color: palette.veryHigh },
-        { label: "高风险", color: palette.high },
-        { label: "中风险", color: palette.medium },
-        { label: "低风险", color: palette.low },
-      ];
-      title = `${getProductMeta(product.id).name}CI 风险地图`;
-      kicker = "风险视图";
-      caption = "展示 2022-2024 年 CI 风险分级结果，可快速识别高风险供应节点。";
-    } else {
-      getAlternativeCountries(product).forEach((item) => {
-        styleMap[item.country] = { fill: tierMeta(item.tier).color };
-      });
-      legend = [
-        { label: "第一梯队", color: palette.tier1 },
-        { label: "第二梯队", color: palette.tier2 },
-        { label: "第三梯队", color: palette.tier3 },
-      ];
-      title = `${getProductMeta(product.id).name}替代产能布局`;
-      kicker = "替代视图";
-      caption = "展示短期替代潜能较高的国家分布，并联动查看长期替代空间。";
-    }
-
-    return { styleMap, legend, title, kicker, caption };
   }
 
   function projectPoint(lon, lat) {
@@ -1551,103 +1060,12 @@
     return "";
   }
 
-  function getTooltipRows(product, mapCountryName) {
-    const importsKey = resolveCountryKey(mapCountryName, product.imports);
-    const producersKey = resolveCountryKey(mapCountryName, product.producers);
-    const riskKey = resolveCountryKey(mapCountryName, product.risk);
-    const shortKey = resolveCountryKey(mapCountryName, (product.alternatives.shortTerm || []).map((item) => item.country));
-    const longKey = resolveCountryKey(mapCountryName, (product.alternatives.longTerm || []).map((item) => item.country));
-
-    const rows = [];
-    let meta = "暂无监测数据";
-    if (state.module === "overview") {
-      const importInfo = importsKey ? product.imports[importsKey] : null;
-      const producerInfo = producersKey ? product.producers[producersKey] : null;
-      if (importInfo) {
-        meta = "进口来源国";
-        rows.push(["最新进口量", formatMt(importInfo.volume.at(-1))]);
-        rows.push(["贸易价格", `${importInfo.price.at(-1)} 美元/吨`]);
-        rows.push(["进口集中度", formatPct(importInfo.dependency.at(-1))]);
-      }
-      if (producerInfo) rows.push(["最新产量", formatMt(producerInfo.output.at(-1))]);
-    } else if (state.module === "risk") {
-      const risk = riskKey ? product.risk[riskKey] : null;
-      if (risk) {
-        meta = riskMeta(risk.level).label;
-        rows.push(["CI 2022", risk.ci2022.toFixed(4)]);
-        rows.push(["CI 2023", risk.ci2023.toFixed(4)]);
-        rows.push(["CI 2024", risk.ci2024.toFixed(4)]);
-      }
-    } else {
-      const shortItem = (product.alternatives.shortTerm || []).find((item) => item.country === shortKey);
-      const longItem = (product.alternatives.longTerm || []).find((item) => item.country === longKey);
-      if (shortItem) {
-        meta = tierMeta(shortItem.tier).label;
-        rows.push(["短期潜能", shortItem.potential.toFixed(4)]);
-      }
-      if (longItem) rows.push(["长期潜能", longItem.potential.toFixed(4)]);
-    }
-    return {
-      title: labelCountry(importsKey || producersKey || riskKey || shortKey || longKey || mapCountryName),
-      meta,
-      rows: rows.length ? rows : [["状态", "当前模块无可展示数据"]],
-    };
-  }
-
   function setTooltipPosition(event) {
     const box = els.worldMap.getBoundingClientRect();
     const offsetX = event.clientX - box.left + 18;
     const offsetY = event.clientY - box.top + 18;
     els.mapTooltip.style.left = `${Math.min(offsetX, box.width - 280)}px`;
     els.mapTooltip.style.top = `${Math.min(offsetY, box.height - 160)}px`;
-  }
-
-  function getTooltipRows(product, mapCountryName) {
-    const importsKey = resolveCountryKey(mapCountryName, product.imports);
-    const producersKey = resolveCountryKey(mapCountryName, product.producers);
-    const riskKey = resolveCountryKey(mapCountryName, product.risk);
-    const shortKey = resolveCountryKey(mapCountryName, (product.alternatives.shortTerm || []).map((item) => item.country));
-    const longKey = resolveCountryKey(mapCountryName, (product.alternatives.longTerm || []).map((item) => item.country));
-
-    const rows = [];
-    let meta = "暂无监测数据";
-
-    if (state.module === "overview") {
-      const yearIndex = getOverviewYearIndex(product);
-      const selectedYear = String(state.selectedOverviewYear || product.years.at(yearIndex));
-      const importInfo = importsKey ? product.imports[importsKey] : null;
-      const producerInfo = producersKey ? product.producers[producersKey] : null;
-
-      if (importInfo) {
-        meta = `${selectedYear}年进口来源国`;
-        rows.push([`${selectedYear}进口量`, formatMt(getSeriesValue(importInfo.volume, yearIndex) || 0)]);
-        rows.push([`${selectedYear}价格`, `${getSeriesValue(importInfo.price, yearIndex) || "--"} 美元/吨`]);
-        rows.push([`${selectedYear}依赖度`, formatPct(getSeriesValue(importInfo.dependency, yearIndex) || 0)]);
-      }
-      if (producerInfo) rows.push([`${selectedYear}产量`, formatMt(getSeriesValue(producerInfo.output, yearIndex) || 0)]);
-    } else if (state.module === "risk") {
-      const risk = riskKey ? product.risk[riskKey] : null;
-      if (risk) {
-        meta = riskMeta(risk.level).label;
-        rows.push(["CI 2022", risk.ci2022.toFixed(4)]);
-        rows.push(["CI 2023", risk.ci2023.toFixed(4)]);
-        rows.push(["CI 2024", risk.ci2024.toFixed(4)]);
-      }
-    } else {
-      const shortItem = (product.alternatives.shortTerm || []).find((item) => item.country === shortKey);
-      const longItem = (product.alternatives.longTerm || []).find((item) => item.country === longKey);
-      if (shortItem) {
-        meta = tierMeta(shortItem.tier).label;
-        rows.push(["短期潜能", shortItem.potential.toFixed(4)]);
-      }
-      if (longItem) rows.push(["长期潜能", longItem.potential.toFixed(4)]);
-    }
-
-    return {
-      title: labelCountry(importsKey || producersKey || riskKey || shortKey || longKey || mapCountryName),
-      meta,
-      rows: rows.length ? rows : [["状态", "当前模块无可展示数据"]],
-    };
   }
 
   function showTooltip(event, product, mapCountryName) {
@@ -1854,81 +1272,6 @@
     });
   }
 
-  function renderMapDefinition() {
-    if (state.module === "risk") {
-      els.mapDefinition.textContent = "";
-      els.mapDefinition.classList.add("hidden");
-      return;
-    }
-
-    els.mapDefinition.textContent = "";
-    els.mapDefinition.classList.add("hidden");
-  }
-
-  function drawMap(product) {
-    const { styleMap, legend, title, kicker, caption } = getModuleCountryStyles(product);
-    renderYearSwitcher(product);
-    renderLegend(legend);
-    els.mapKicker.textContent = kicker;
-    els.mapTitle.textContent = title;
-    renderMapDefinition();
-    els.mapCaption.textContent = caption;
-    els.worldMap.innerHTML = "";
-
-    if (!state.geoJson) {
-      els.worldMap.innerHTML = '<text x="500" y="260" text-anchor="middle" fill="#627061" font-size="18">地图数据加载中...</text>';
-      els.mapFocus.innerHTML = "";
-      return;
-    }
-
-    state.selectedCountry = getSelectedCountry(product);
-    drawMapBackdrop();
-
-    state.geoJson.features.forEach((feature) => {
-      const mapName = feature.properties?.name;
-      const matchedKey = resolveCountryKey(mapName, Object.keys(styleMap));
-      const pathData = geometryToPath(feature.geometry);
-      if (!pathData) return;
-
-      const node = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      node.setAttribute("d", pathData);
-      node.setAttribute("fill", matchedKey ? styleMap[matchedKey].fill : palette.nodata);
-      node.setAttribute("stroke", palette.border);
-      node.setAttribute("stroke-width", "0.8");
-      node.setAttribute("class", "country-shape");
-      node.setAttribute("data-country", matchedKey || mapName);
-      node.setAttribute("opacity", matchedKey ? "0.96" : "0.72");
-
-      if (matchedKey && normalizeCountryName(matchedKey) === normalizeCountryName(state.selectedCountry)) {
-        node.classList.add("is-active");
-      }
-
-      node.addEventListener("mouseenter", (event) => showTooltip(event, product, mapName));
-      node.addEventListener("mousemove", setTooltipPosition);
-      node.addEventListener("mouseleave", hideTooltip);
-      node.addEventListener("click", () => {
-        if (Date.now() < state.suppressMapClickUntil) return;
-        const next = resolveCountryKey(mapName, [
-          ...Object.keys(product.imports),
-          ...Object.keys(product.producers),
-          ...Object.keys(product.risk),
-          ...(product.alternatives.shortTerm || []).map((item) => item.country),
-          ...(product.alternatives.longTerm || []).map((item) => item.country),
-        ]);
-        if (next) {
-          state.selectedCountry = next;
-          if (state.module === "alternative" && state.alternativeFlowMode) {
-            render();
-            return;
-          }
-          updateMapSelection(product);
-        }
-      });
-
-      els.worldMap.appendChild(node);
-    });
-  }
-
   let chartInstanceId = 0;
 
   function colorWithAlpha(hex, alpha) {
@@ -1991,7 +1334,7 @@
       range = Math.abs(dataMax) * 0.12 || (format === "percent" ? 10 : format === "ci" ? 0.02 : 1);
     }
 
-    const zeroFloorFormats = new Set(["mt", "percent", "price", "area", "yield"]);
+    const zeroFloorFormats = new Set(["mt", "wantons", "percent", "price", "area", "yield"]);
     const useZeroFloor = dataMin >= 0 && zeroFloorFormats.has(format);
     const lower = useZeroFloor ? Math.max(0, dataMin - range * 0.03) : dataMin - range * 0.05;
     const upper = dataMax + range * 0.06;
@@ -2241,106 +1584,6 @@
     `;
   }
 
-  function makeRadarChart(seriesList, options = {}) {
-    const size = options.size || 320;
-    const center = size / 2;
-    const outerRadius = options.radius || 104;
-    const axes = options.axes || ["D 破坏性", "T 传播性", "V 脆弱性"];
-    const levels = options.levels || 4;
-    const maxValue = options.maxValue || Math.max(
-      3,
-      ...seriesList.flatMap((series) => series.values.map((value) => Number(value) || 0)),
-    );
-    const angleStep = (Math.PI * 2) / axes.length;
-
-    const axisPoints = axes.map((_, index) => {
-      const angle = -Math.PI / 2 + angleStep * index;
-      return {
-        x: center + Math.cos(angle) * outerRadius,
-        y: center + Math.sin(angle) * outerRadius,
-        angle,
-      };
-    });
-
-    const gridPolygons = Array.from({ length: levels }, (_, levelIndex) => {
-      const ratio = (levelIndex + 1) / levels;
-      const points = axisPoints
-        .map((point) => `${(center + Math.cos(point.angle) * outerRadius * ratio).toFixed(2)},${(center + Math.sin(point.angle) * outerRadius * ratio).toFixed(2)}`)
-        .join(" ");
-      return `<polygon class="radar-grid" points="${points}"></polygon>`;
-    }).join("");
-
-    const axisLines = axisPoints
-      .map((point) => `<line class="radar-axis" x1="${center}" y1="${center}" x2="${point.x}" y2="${point.y}"></line>`)
-      .join("");
-
-    const axisLabels = axisPoints
-      .map((point, index) => {
-        const labelX = center + Math.cos(point.angle) * (outerRadius + 28);
-        const labelY = center + Math.sin(point.angle) * (outerRadius + 28);
-        return `<text class="radar-label" x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle">${axes[index]}</text>`;
-      })
-      .join("");
-
-    const rings = Array.from({ length: levels }, (_, levelIndex) => {
-      const value = ((maxValue / levels) * (levelIndex + 1)).toFixed(2);
-      return `<text class="radar-ring-label" x="${center + 8}" y="${center - (outerRadius * (levelIndex + 1)) / levels + 2}">${value}</text>`;
-    }).join("");
-
-    const seriesMarkup = seriesList
-      .map((series) => {
-        const points = series.values.map((value, index) => {
-          const safeValue = Math.max(0, Number(value) || 0);
-          const ratio = Math.min(1, safeValue / maxValue);
-          const point = axisPoints[index];
-          return {
-            x: center + Math.cos(point.angle) * outerRadius * ratio,
-            y: center + Math.sin(point.angle) * outerRadius * ratio,
-            value: safeValue,
-          };
-        });
-
-        const polygon = points.map((point) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(" ");
-        const dots = points
-          .map(
-            (point, index) =>
-              `<circle class="radar-point" cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="3.5" fill="${series.color}" data-year="${series.label}" data-label="${axes[index]}" data-value="${point.value.toFixed(4)}"></circle>`,
-          )
-          .join("");
-
-        return `
-          <g class="radar-series">
-            <polygon class="radar-area" points="${polygon}" fill="${series.color}" fill-opacity="0.12" stroke="${series.color}" stroke-width="2"></polygon>
-            ${dots}
-          </g>
-        `;
-      })
-      .join("");
-
-    const legend = seriesList
-      .map(
-        (series) => `
-          <div class="radar-legend-item">
-            <span class="radar-legend-dot" style="background:${series.color};"></span>
-            <span>${series.label}</span>
-          </div>
-        `,
-      )
-      .join("");
-
-    return `
-      <div class="radar-chart-wrap">
-        <svg class="radar-svg" viewBox="0 0 ${size} ${size}" aria-hidden="true">
-          ${gridPolygons}
-          ${axisLines}
-          ${rings}
-          ${seriesMarkup}
-          ${axisLabels}
-        </svg>
-        <div class="radar-legend">${legend}</div>
-      </div>
-    `;
-  }
 
   function makeRadarChart(seriesList, options = {}) {
     const size = options.size || 320;
@@ -2632,152 +1875,132 @@
     modalTransitionState.panelAnimation.addEventListener("finish", finishClose, { once: true });
   }
 
-  function buildProducerDetailModal(product, country) {
-    const producerKey = resolveCountryKey(country, product.producers);
-    const producer = producerKey ? product.producers[producerKey] : null;
-    const importKey = resolveCountryKey(country, product.imports);
-    const importer = importKey ? product.imports[importKey] : null;
-    const years = product.years;
-    const yearIndex = getOverviewYearIndex(product);
-    const selectedYear = String(state.selectedOverviewYear || years.at(yearIndex));
+  function initModalInteractions() {
+    if (els.detailModal.dataset.bound === "1") return;
+    els.detailModal.dataset.bound = "1";
 
-    if (!producer) {
-      return `
-        <div class="modal-content modal-content--empty">
-          <div class="modal-header">
-            <div>
-              <p class="panel-kicker">Production Detail</p>
-              <h3 class="modal-title" id="detailModalTitle">${labelCountry(country)}生产数据</h3>
-              <p class="modal-copy">当前国家暂无可展开的生产趋势数据，请切换其他国家查看。</p>
-            </div>
-          </div>
-        </div>
-      `;
-    }
+    els.detailModal.addEventListener("click", (event) => {
+      if (event.target.closest("[data-close-modal='true']") || event.target === els.detailModalClose) {
+        closeDetailModal();
+      }
+    });
 
-    const summaryCards = [
-      { label: `${selectedYear}产量`, value: formatOptionalSeriesValue(producer.output, yearIndex, formatMt) },
-      { label: `${selectedYear}面积`, value: formatOptionalSeriesValue(producer.area, yearIndex, (value) => formatChartValue(value, "area")) },
-      { label: `${selectedYear}单产`, value: formatOptionalSeriesValue(producer.yield, yearIndex, (value) => formatChartValue(value, "yield")) },
-      { label: `${selectedYear}对华进口`, value: importer ? formatOptionalSeriesValue(importer.volume, yearIndex, formatMt) : "暂无数据" },
-    ];
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !els.detailModal.classList.contains("hidden")) {
+        closeDetailModal();
+      }
+    });
 
-    return `
-      <div class="modal-content">
-        <div class="modal-header">
-          <div>
-            <p class="panel-kicker">Production Detail</p>
-            <h3 class="modal-title" id="detailModalTitle">${labelCountry(country)}生产数据</h3>
-            <p class="modal-copy">把关键指标和三张核心趋势图集中放在一屏里，优先保证信息密度和可读性。</p>
-          </div>
-          <div class="modal-badge">${selectedYear} 年重点观察</div>
-        </div>
-        <div class="modal-metrics">
-          ${summaryCards
-            .map(
-              (item) => `
-                <article class="metric-card">
-                  <div class="metric-label">${item.label}</div>
-                  <div class="metric-value">${item.value}</div>
-                </article>
-              `,
-            )
-            .join("")}
-        </div>
-        <div class="modal-chart-stack modal-chart-stack--triple">
-          <article class="modal-chart-card">
-            <h4>产量趋势</h4>
-            <div class="single-chart single-chart--modal">
-              ${makeLineChart(producer.output, years, "#1f6b45", { width: 332, height: 224, showAllYears: true, format: "mt", label: "产量" })}
-            </div>
-            <p class="modal-chart-note">反映供给体量与波动。</p>
-          </article>
-          <article class="modal-chart-card">
-            <h4>种植面积趋势</h4>
-            <div class="single-chart single-chart--modal">
-              ${makeLineChart(producer.area, years, "#4f8e60", { width: 332, height: 224, showAllYears: true, format: "area", label: "面积" })}
-            </div>
-            <p class="modal-chart-note">用于判断扩种空间。</p>
-          </article>
-          <article class="modal-chart-card">
-            <h4>单产趋势</h4>
-            <div class="single-chart single-chart--modal">
-              ${makeLineChart(producer.yield, years, "#d2a543", { width: 332, height: 224, showAllYears: true, format: "yield", label: "单产" })}
-            </div>
-            <p class="modal-chart-note">反映效率与气候影响。</p>
-          </article>
-        </div>
-      </div>
-    `;
+    const openModalFromTrigger = (trigger) => {
+      const product = getProduct();
+      const country = getSelectedCountry(product);
+      if (!country) return;
+
+      const modalKind = trigger.getAttribute("data-open-detail-modal");
+      let modalContent = "";
+      if (modalKind?.startsWith("capacity_")) {
+        modalContent = buildCapacityTrendModal(product, country, modalKind);
+      } else if (modalKind?.startsWith("trade_")) {
+        modalContent = buildTradeTrendModal(product, country, modalKind);
+      } else {
+        return;
+      }
+      openDetailModal(modalContent, trigger);
+    };
+
+    const bindModalRoot = (root) => {
+      if (!root || root.dataset.detailModalBound === "1") return;
+      root.dataset.detailModalBound = "1";
+
+      root.addEventListener("click", (event) => {
+        const trigger = event.target.closest("[data-open-detail-modal]");
+        if (!trigger || !root.contains(trigger)) return;
+        openModalFromTrigger(trigger);
+      });
+
+      root.addEventListener("keydown", (event) => {
+        const trigger = event.target.closest("[data-open-detail-modal]");
+        if (!trigger || !root.contains(trigger) || (event.key !== "Enter" && event.key !== " ")) return;
+        event.preventDefault();
+        openModalFromTrigger(trigger);
+      });
+    };
+
+    bindModalRoot(els.chartStack);
+    bindModalRoot(els.capacityTrendStack);
+    bindModalRoot(els.tradeTrendStack);
+    bindModalRoot(els.tradeOverallCharts);
   }
 
-  function buildImportDetailModal(product, country, modalKind) {
-    const importKey = resolveCountryKey(country, product.imports);
-    const importer = importKey ? product.imports[importKey] : null;
+  function buildCapacityTrendModal(product, country, modalKind) {
+    const producerKey = resolveCountryKey(country, product.producers);
+    const producer = producerKey ? product.producers[producerKey] : null;
     const years = product.years;
     const yearIndex = getOverviewYearIndex(product);
     const selectedYear = String(state.selectedOverviewYear || years.at(yearIndex));
-    const volumeValues = getAvailableSeriesValues(importer?.volume);
-    const priceValues = getAvailableSeriesValues(importer?.price);
-    const dependencyValues = getAvailableSeriesValues(importer?.dependency);
+    const outputSeries = (producer?.output || []).map((value) => (value === null || value === undefined ? null : Number(value) * 100));
+    const areaSeries = (producer?.area || []).map((value) => (value === null || value === undefined ? null : Number(value) * 100));
+    const outputValues = getAvailableSeriesValues(outputSeries);
+    const areaValues = getAvailableSeriesValues(areaSeries);
+    const yieldValues = getAvailableSeriesValues(producer?.yield);
 
     const configMap = {
-      import_volume: {
-        title: "中国自该国进口量走势",
+      capacity_output: {
+        title: "产量变化（万吨）",
         color: "#1f6b45",
-        format: "mt",
-        label: "进口量",
-        series: importer?.volume || [],
-        note: "用于观察中国自该来源国进口规模的长期变化。",
-        stats: importer
+        format: "wantons",
+        label: "产量",
+        series: outputSeries,
+        note: "用于观察该国产量规模的长期变化与波动。",
+        stats: producer
           ? [
-              { label: `${selectedYear}进口量`, value: formatOptionalSeriesValue(importer.volume, yearIndex, formatMt) },
-              { label: "近年峰值", value: volumeValues.length ? formatMt(Math.max(...volumeValues)) : "暂无数据" },
-              { label: "近年均值", value: volumeValues.length ? formatMt(volumeValues.reduce((sum, value) => sum + value, 0) / volumeValues.length) : "暂无数据" },
+              { label: `${selectedYear}产量`, value: `${formatWanTons(getSeriesValue(producer.output, yearIndex))} 万吨` },
+              { label: "近年峰值", value: outputValues.length ? `${formatWanTons(Math.max(...outputValues) / 100)} 万吨` : "暂无数据" },
+              { label: "近年均值", value: outputValues.length ? `${formatWanTons(outputValues.reduce((sum, value) => sum + value, 0) / outputValues.length / 100)} 万吨` : "暂无数据" },
             ]
           : [],
       },
-      import_price: {
-        title: "中国自该国进口价格走势",
-        color: "#d2a543",
-        format: "price",
-        label: "价格",
-        series: importer?.price || [],
-        note: "用于观察该来源国对华进口价格的波动与抬升区间。",
-        stats: importer
+      capacity_area: {
+        title: "面积变化（万公顷）",
+        color: "#3f8f5c",
+        format: "area",
+        label: "面积",
+        series: areaSeries,
+        note: "用于观察该国收获面积的扩张或收缩趋势。",
+        stats: producer
           ? [
-              { label: `${selectedYear}价格`, value: formatOptionalSeriesValue(importer.price, yearIndex, (value) => `${Number(value).toFixed(0)} 美元/吨`) },
-              { label: "近年峰值", value: priceValues.length ? `${Math.max(...priceValues).toFixed(0)} 美元/吨` : "暂无数据" },
-              { label: "近年均值", value: priceValues.length ? `${(priceValues.reduce((sum, value) => sum + value, 0) / priceValues.length).toFixed(0)} 美元/吨` : "暂无数据" },
+              { label: `${selectedYear}面积`, value: `${formatWanHa(getSeriesValue(producer.area, yearIndex))} 万公顷` },
+              { label: "近年峰值", value: areaValues.length ? `${formatWanHa(Math.max(...areaValues) / 100)} 万公顷` : "暂无数据" },
+              { label: "近年均值", value: areaValues.length ? `${formatWanHa(areaValues.reduce((sum, value) => sum + value, 0) / areaValues.length / 100)} 万公顷` : "暂无数据" },
             ]
           : [],
       },
-      import_dependency: {
-        title: "中国对该国进口依赖度变化",
-        color: "#b93e34",
-        format: "percent",
-        label: "依赖度",
-        series: importer ? importer.dependency.map((value) => value === null ? null : value * 100) : [],
-        note: "用于判断中国对该来源国进口依赖是否在持续升高或回落。",
-        stats: importer
+      capacity_yield: {
+        title: "单产变化（吨/公顷）",
+        color: "#7a5ea8",
+        format: "yield",
+        label: "单产",
+        series: producer?.yield || [],
+        note: "用于观察单产效率变化及可能受到的气候影响。",
+        stats: producer
           ? [
-              { label: `${selectedYear}依赖度`, value: formatOptionalSeriesValue(importer.dependency, yearIndex, formatPct) },
-              { label: "近年峰值", value: dependencyValues.length ? `${(Math.max(...dependencyValues) * 100).toFixed(1)}%` : "暂无数据" },
-              { label: "近年均值", value: dependencyValues.length ? `${(dependencyValues.reduce((sum, value) => sum + value, 0) * 100 / dependencyValues.length).toFixed(1)}%` : "暂无数据" },
+              { label: `${selectedYear}单产`, value: `${formatYieldValue(getSeriesValue(producer.yield, yearIndex))} 吨/公顷` },
+              { label: "近年峰值", value: yieldValues.length ? `${Math.max(...yieldValues).toFixed(2)} 吨/公顷` : "暂无数据" },
+              { label: "近年均值", value: yieldValues.length ? `${(yieldValues.reduce((sum, value) => sum + value, 0) / yieldValues.length).toFixed(2)} 吨/公顷` : "暂无数据" },
             ]
           : [],
       },
     };
 
     const config = configMap[modalKind];
-    if (!importer || !config) {
+    if (!producer || !config) {
       return `
         <div class="modal-content modal-content--empty">
           <div class="modal-header">
             <div>
-              <p class="panel-kicker">Trade Detail</p>
-              <h3 class="modal-title" id="detailModalTitle">${labelCountry(country)}进口趋势</h3>
-              <p class="modal-copy">当前国家暂无可展开的进口趋势数据，请切换其他国家查看。</p>
+              <p class="panel-kicker">Production Detail</p>
+              <h3 class="modal-title" id="detailModalTitle">${labelCountry(country)}产能趋势</h3>
+              <p class="modal-copy">当前国家暂无可展开的产能趋势数据，请切换其他国家查看。</p>
             </div>
           </div>
         </div>
@@ -2788,11 +2011,10 @@
       <div class="modal-content modal-content--single-chart">
         <div class="modal-header">
           <div>
-            <p class="panel-kicker">Trade Detail</p>
+            <p class="panel-kicker">Production Detail</p>
             <h3 class="modal-title" id="detailModalTitle">${config.title}</h3>
-            <p class="modal-copy">${labelCountry(country)} 的这项进口指标已展开为大图，便于更清楚地观察年度变化过程。</p>
+            <p class="modal-copy">${labelCountry(country)} 的这项产能指标已展开为大图，便于更清楚地观察年度变化过程。</p>
           </div>
-          <div class="modal-badge">${selectedYear} 年重点观察</div>
         </div>
         <div class="modal-metrics modal-metrics--triple">
           ${config.stats
@@ -2819,449 +2041,30 @@
     `;
   }
 
-  function initModalInteractions() {
-    if (els.detailModal.dataset.bound === "1") return;
-    els.detailModal.dataset.bound = "1";
+  function enhanceCapacityTrendCards() {
+    if (!els.capacityTrendStack) return;
+    const cards = Array.from(els.capacityTrendStack.querySelectorAll(".capacity-trend-card"));
+    const modalKinds = ["capacity_output", "capacity_area", "capacity_yield"];
+    const labels = ["产量变化大图", "面积变化大图", "单产变化大图"];
 
-    els.detailModal.addEventListener("click", (event) => {
-      if (event.target.closest("[data-close-modal='true']") || event.target === els.detailModalClose) {
-        closeDetailModal();
-      }
-    });
-
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape" && !els.detailModal.classList.contains("hidden")) {
-        closeDetailModal();
-      }
-    });
-
-    els.chartStack.addEventListener("click", (event) => {
-      const trigger = event.target.closest("[data-open-detail-modal]");
-      if (!trigger) return;
-
-      const product = getProduct();
-      const country = getSelectedCountry(product);
-      if (!country) return;
-
-      const modalKind = trigger.getAttribute("data-open-detail-modal");
-      const modalContent =
-        modalKind === "producer"
-          ? buildProducerDetailModal(product, country)
-          : buildImportDetailModal(product, country, modalKind);
-      openDetailModal(modalContent, trigger);
-    });
-
-    els.chartStack.addEventListener("keydown", (event) => {
-      const trigger = event.target.closest("[data-open-detail-modal]");
-      if (!trigger || (event.key !== "Enter" && event.key !== " ")) return;
-
-      event.preventDefault();
-      const product = getProduct();
-      const country = getSelectedCountry(product);
-      if (!country) return;
-
-      const modalKind = trigger.getAttribute("data-open-detail-modal");
-      const modalContent =
-        modalKind === "producer"
-          ? buildProducerDetailModal(product, country)
-          : buildImportDetailModal(product, country, modalKind);
-      openDetailModal(modalContent, trigger);
-    });
-  }
-
-  function enhanceOverviewProducerCard() {
-    const overviewCard = els.chartStack.querySelector(".chart-card");
-    if (!overviewCard) return;
-
-    overviewCard.classList.add("chart-card--interactive");
-    overviewCard.setAttribute("data-open-detail-modal", "producer");
-    overviewCard.setAttribute("role", "button");
-    overviewCard.setAttribute("tabindex", "0");
-    overviewCard.setAttribute("aria-label", "查看该国生产数据大图");
-
-    const title = overviewCard.querySelector("h4");
-    if (title && !overviewCard.querySelector(".chart-expand-hint")) {
-      const header = document.createElement("div");
-      header.className = "chart-card-head";
-      title.parentNode.insertBefore(header, title);
-      header.appendChild(title);
-
-      const hint = document.createElement("span");
-      hint.className = "chart-expand-hint";
-      hint.textContent = "点击查看大图";
-      header.appendChild(hint);
-    }
-  }
-
-  function enhanceOverviewTrendCards() {
-    const trendCards = Array.from(els.chartStack.querySelectorAll(".chart-card--trend"));
-    const modalKinds = ["import_volume", "import_price", "import_dependency"];
-
-    trendCards.forEach((card, index) => {
+    cards.forEach((card, index) => {
       const modalKind = modalKinds[index];
       if (!modalKind) return;
 
-      card.classList.add("chart-card--interactive", "chart-card--trend-mini");
+      card.classList.add("chart-card--interactive", "capacity-trend-card--interactive");
       card.setAttribute("data-open-detail-modal", modalKind);
       card.setAttribute("role", "button");
       card.setAttribute("tabindex", "0");
-      card.setAttribute("aria-label", "查看该进口趋势大图");
+      card.setAttribute("aria-label", `查看${labels[index]}`);
 
-      const title = card.querySelector("h4");
-      if (title && !card.querySelector(".chart-expand-hint")) {
-        const header = document.createElement("div");
-        header.className = "chart-card-head";
-        title.parentNode.insertBefore(header, title);
-        header.appendChild(title);
-
+      const head = card.querySelector(".capacity-trend-head");
+      if (head && !card.querySelector(".chart-expand-hint")) {
         const hint = document.createElement("span");
         hint.className = "chart-expand-hint";
         hint.textContent = "点击查看大图";
-        header.appendChild(hint);
+        head.appendChild(hint);
       }
     });
-  }
-
-  function renderOverviewSide(product, country) {
-    const producerKey = resolveCountryKey(country, product.producers);
-    const importKey = resolveCountryKey(country, product.imports);
-    const producer = producerKey ? product.producers[producerKey] : null;
-    const importer = importKey ? product.imports[importKey] : null;
-    const years = product.years;
-    const yearIndex = getOverviewYearIndex(product);
-    const selectedYear = String(state.selectedOverviewYear || years.at(yearIndex));
-
-    els.detailTitle.textContent = labelCountry(country);
-    els.detailBadge.textContent = `${selectedYear}年来源国画像`;
-    els.detailBadge.style.background = "rgba(31,107,69,0.1)";
-
-    els.detailHighlights.innerHTML = `
-      <article class="detail-chip">
-        <div class="detail-chip-label">${selectedYear}产量</div>
-        <div class="detail-chip-value">${producer ? formatOptionalSeriesValue(producer.output, yearIndex, formatMt) : "暂无数据"}</div>
-      </article>
-      <article class="detail-chip">
-        <div class="detail-chip-label">${selectedYear}进口量</div>
-        <div class="detail-chip-value">${importer ? formatOptionalSeriesValue(importer.volume, yearIndex, formatMt) : "暂无数据"}</div>
-      </article>
-      <article class="detail-chip">
-        <div class="detail-chip-label">${selectedYear}价格</div>
-        <div class="detail-chip-value">${importer ? formatOptionalSeriesValue(importer.price, yearIndex, (value) => `${Number(value).toFixed(0)} 美元/吨`) : "暂无数据"}</div>
-      </article>
-      <article class="detail-chip">
-        <div class="detail-chip-label">${selectedYear}依赖度</div>
-        <div class="detail-chip-value">${importer ? formatOptionalSeriesValue(importer.dependency, yearIndex, formatPct) : "暂无数据"}</div>
-      </article>
-    `;
-
-    els.chartStack.innerHTML = `
-      <article class="chart-card">
-        <h4>该国生产数据</h4>
-        <div class="chart-subgrid">
-          <div class="mini-chart">
-            <div class="mini-chart-title">产量</div>
-            ${producer ? makeLineChart(producer.output, years, "#1f6b45", { format: "mt", label: "产量" }) : '<div class="chart-caption">暂无数据</div>'}
-          </div>
-          <div class="mini-chart">
-            <div class="mini-chart-title">面积</div>
-            ${producer ? makeLineChart(producer.area, years, "#4f8e60", { format: "area", label: "面积" }) : '<div class="chart-caption">暂无数据</div>'}
-          </div>
-          <div class="mini-chart">
-            <div class="mini-chart-title">单产</div>
-            ${producer ? makeLineChart(producer.yield, years, "#d2a543", { format: "yield", label: "单产" }) : '<div class="chart-caption">暂无数据</div>'}
-          </div>
-        </div>
-      </article>
-      <article class="chart-card chart-card--trend chart-card--trend-mini">
-        <h4>中国自该国进口量走势</h4>
-        <div class="single-chart single-chart--compact">
-          ${importer ? makeLineChart(importer.volume, years, "#1f6b45", { compact: true, showAllYears: true, format: "mt", label: "进口量" }) : '<div class="chart-caption">暂无数据</div>'}
-        </div>
-      </article>
-      <article class="chart-card chart-card--trend chart-card--trend-mini">
-        <h4>中国自该国进口价格走势</h4>
-        <div class="single-chart single-chart--compact">
-          ${importer ? makeLineChart(importer.price, years, "#d2a543", { compact: true, showAllYears: true, format: "price", label: "价格" }) : '<div class="chart-caption">暂无数据</div>'}
-        </div>
-      </article>
-      <article class="chart-card chart-card--trend chart-card--trend-mini">
-        <h4>中国对该国进口依赖度变化</h4>
-        <div class="single-chart single-chart--compact">
-          ${importer ? makeLineChart(importer.dependency.map((value) => value === null ? null : value * 100), years, "#b93e34", { compact: true, showAllYears: true, format: "percent", label: "依赖度" }) : '<div class="chart-caption">暂无数据</div>'}
-        </div>
-      </article>
-    `;
-  }
-
-  function renderRiskSide(product, country) {
-    const riskKey = resolveCountryKey(country, product.risk);
-    const risk = riskKey ? product.risk[riskKey] : null;
-
-    els.detailTitle.textContent = labelCountry(country);
-    els.detailBadge.textContent = risk ? riskMeta(risk.level).label : "无数据";
-    els.detailBadge.style.background = risk ? `${riskMeta(risk.level).color}22` : "rgba(0,0,0,0.06)";
-
-    els.detailHighlights.innerHTML = risk
-      ? `
-        <article class="detail-chip"><div class="detail-chip-label">CI 2022</div><div class="detail-chip-value">${risk.ci2022.toFixed(4)}</div></article>
-        <article class="detail-chip"><div class="detail-chip-label">CI 2023</div><div class="detail-chip-value">${risk.ci2023.toFixed(4)}</div></article>
-        <article class="detail-chip"><div class="detail-chip-label">CI 2024</div><div class="detail-chip-value">${risk.ci2024.toFixed(4)}</div></article>
-        <article class="detail-chip"><div class="detail-chip-label">三年均值</div><div class="detail-chip-value">${risk.score.toFixed(4)}</div></article>
-      `
-      : "";
-
-    els.chartStack.innerHTML = risk
-      ? `
-        <article class="chart-card chart-card--trend">
-          <h4>CI 三年变化</h4>
-          <div class="single-chart single-chart--compact">
-            ${makeLineChart([risk.ci2022, risk.ci2023, risk.ci2024], ["2022", "2023", "2024"], riskMeta(risk.level).color, { compact: true, showAllYears: true, format: "ci", label: "CI" })}
-          </div>
-        </article>
-        <article class="chart-card">
-          <h4>风险解读</h4>
-          <div class="single-chart risk-level-card">
-            <div class="risk-level-value" style="color:${riskMeta(risk.level).color};">${riskMeta(risk.level).label}</div>
-          </div>
-        </article>
-      `
-      : `<article class="chart-card"><h4>暂无风险数据</h4><p class="chart-caption">请在地图上选择有风险分级结果的国家。</p></article>`;
-  }
-
-  function renderRiskSide(product, country) {
-    const riskKey = resolveCountryKey(country, product.risk);
-    const risk = riskKey ? product.risk[riskKey] : null;
-    const riskYears = ["2022", "2023", "2024"];
-
-    els.detailTitle.textContent = labelCountry(country);
-    els.detailBadge.textContent = risk ? riskMeta(risk.level).label : "无数据";
-    els.detailBadge.style.background = risk ? `${riskMeta(risk.level).color}22` : "rgba(0,0,0,0.06)";
-
-    els.detailHighlights.innerHTML = risk
-      ? `
-        ${riskYears
-          .map((year) => {
-            const metrics = getRiskDtvByYear(risk, year);
-            return `
-              <article class="detail-chip detail-chip--risk-year">
-                <div class="detail-chip-label">${year}</div>
-                <div class="detail-chip-metrics">
-                  <span>D ${formatRiskMetric(metrics.d)}</span>
-                  <span>T ${formatRiskMetric(metrics.t)}</span>
-                  <span>V ${formatRiskMetric(metrics.v)}</span>
-                </div>
-              </article>
-            `;
-          })
-          .join("")}
-        <article class="detail-chip">
-          <div class="detail-chip-label">CI 三年均值</div>
-          <div class="detail-chip-value">${risk.score.toFixed(4)}</div>
-        </article>
-      `
-      : "";
-
-    els.chartStack.innerHTML = risk
-      ? `
-        <article class="chart-card chart-card--trend">
-          <h4>D / T / V 三年变化</h4>
-          <div class="chart-subgrid">
-            <div class="mini-chart">
-              <div class="mini-chart-title">D 破坏性</div>
-              ${makeLineChart(riskYears.map((year) => getRiskDtvByYear(risk, year).d), riskYears, "#1f6b45", { compact: true, showAllYears: true, format: "ci", label: "D" })}
-            </div>
-            <div class="mini-chart">
-              <div class="mini-chart-title">T 传播性</div>
-              ${makeLineChart(riskYears.map((year) => getRiskDtvByYear(risk, year).t), riskYears, "#d2a543", { compact: true, showAllYears: true, format: "ci", label: "T" })}
-            </div>
-            <div class="mini-chart">
-              <div class="mini-chart-title">V 脆弱性</div>
-              ${makeLineChart(riskYears.map((year) => getRiskDtvByYear(risk, year).v), riskYears, "#b93e34", { compact: true, showAllYears: true, format: "ci", label: "V" })}
-            </div>
-          </div>
-        </article>
-        <article class="chart-card">
-          <h4>CI 风险解读</h4>
-          <div class="single-chart risk-level-card">
-            <div class="risk-level-value" style="color:${riskMeta(risk.level).color};">${riskMeta(risk.level).label}</div>
-            <p class="chart-caption">CI 2022-2024: ${risk.ci2022.toFixed(4)} / ${risk.ci2023.toFixed(4)} / ${risk.ci2024.toFixed(4)}</p>
-          </div>
-        </article>
-      `
-      : `<article class="chart-card"><h4>暂无风险数据</h4><p class="chart-caption">请在地图中选择具有风险分级结果的国家。</p></article>`;
-  }
-
-  function renderRiskSide(product, country) {
-    const riskKey = resolveCountryKey(country, product.risk);
-    const risk = riskKey ? product.risk[riskKey] : null;
-
-    els.detailTitle.textContent = labelCountry(country);
-    els.detailBadge.textContent = risk ? riskMeta(risk.level).label : "无数据";
-    els.detailBadge.style.background = risk ? `${riskMeta(risk.level).color}22` : "rgba(0,0,0,0.06)";
-
-    els.detailHighlights.innerHTML = risk
-      ? `
-        <article class="detail-chip"><div class="detail-chip-label">CI 2022</div><div class="detail-chip-value">${risk.ci2022.toFixed(4)}</div></article>
-        <article class="detail-chip"><div class="detail-chip-label">CI 2023</div><div class="detail-chip-value">${risk.ci2023.toFixed(4)}</div></article>
-        <article class="detail-chip"><div class="detail-chip-label">CI 2024</div><div class="detail-chip-value">${risk.ci2024.toFixed(4)}</div></article>
-        <article class="detail-chip"><div class="detail-chip-label">CI 三年均值</div><div class="detail-chip-value">${risk.score.toFixed(4)}</div></article>
-      `
-      : "";
-
-    els.chartStack.innerHTML = risk
-      ? `
-        <article class="chart-card chart-card--trend">
-          <h4>CI 三年变化</h4>
-          <div class="single-chart single-chart--compact">
-            ${makeLineChart([risk.ci2022, risk.ci2023, risk.ci2024], ["2022", "2023", "2024"], riskMeta(risk.level).color, { compact: true, showAllYears: true, format: "ci", label: "CI" })}
-          </div>
-        </article>
-        <article class="chart-card">
-          <h4>CI 风险解读</h4>
-          <div class="single-chart risk-level-card">
-            <div class="risk-level-value" style="color:${riskMeta(risk.level).color};">${riskMeta(risk.level).label}</div>
-            <p class="chart-caption">CI 2022-2024: ${risk.ci2022.toFixed(4)} / ${risk.ci2023.toFixed(4)} / ${risk.ci2024.toFixed(4)}</p>
-          </div>
-        </article>
-      `
-      : `<article class="chart-card"><h4>暂无风险数据</h4><p class="chart-caption">请在地图中选择具有风险分级结果的国家。</p></article>`;
-  }
-
-  function getModuleCountryStyles(product) {
-    const styleMap = {};
-    let legend = [];
-    let title = "";
-    let kicker = "";
-    let caption = "";
-    let hiddenCountries = [];
-    let replacementArrows = [];
-
-    if (state.module === "overview") {
-      const selectedYear = String(state.selectedOverviewYear || product.years.at(getOverviewYearIndex(product)));
-      getOverviewCountries(product).forEach((country, index) => {
-        const colors = ["#1f6b45", "#2f7b53", "#4d986a", "#76ac84", "#a0c1a3"];
-        styleMap[country] = { fill: colors[index] };
-      });
-      legend = [
-        { label: `${selectedYear}年中国前五大进口来源国`, color: palette.primary },
-        { label: "其他国家", color: palette.nodata },
-      ];
-      title = `${selectedYear}年${getProductMeta(product.id).name}进口来源高亮地图`;
-      kicker = "最近三年切换";
-      caption = `点击高亮国家后，右侧会展示该国生产数据、中国自该国进口量与价格走势，以及中国对该国进口依赖度变化。当前查看：${selectedYear} 年。`;
-    } else if (state.module === "risk") {
-      Object.entries(product.risk).forEach(([country, info]) => {
-        styleMap[country] = { fill: riskMeta(info.level).color };
-      });
-      legend = [
-        { label: "极高风险", color: palette.veryHigh },
-        { label: "高风险", color: palette.high },
-        { label: "中风险", color: palette.medium },
-        { label: "低风险", color: palette.low },
-      ];
-      title = `${getProductMeta(product.id).name}CI 风险地图`;
-      kicker = "风险视图";
-      caption = "展示该国 2022-2024 年的 D 破坏性、T 传播性和 V 脆弱性三者数值，分年展示。";
-    } else {
-      const sourceCountry = getSelectedCountry(product);
-
-      if (state.alternativeFlowMode && sourceCountry) {
-        const candidates = getAlternativeReplacementCandidates(product, sourceCountry);
-        candidates.forEach((item, index) => {
-          const colors = ["#1f6b45", "#3c8b57", "#5e9e63", "#83b475", "#a7c78f", "#cad9af"];
-          styleMap[item.country] = { fill: colors[index] || getAlternativeTierColor(item.tierLabel) };
-        });
-        hiddenCountries = [sourceCountry];
-        replacementArrows = candidates.map((item) => ({
-          from: sourceCountry,
-          to: item.country,
-          color: getAlternativeTierColor(item.tierLabel),
-        }));
-        legend = [
-          { label: "替代起点国家", color: "#d8dfd8" },
-          { label: "可替代且非高风险国家", color: palette.tier1 },
-        ];
-        title = `${labelCountry(sourceCountry)}替代流向模拟`;
-        kicker = "替代演示";
-        caption = `当前已隐藏 ${labelCountry(sourceCountry)}，并高亮 ${candidates.length} 个可承接替代需求且不属于高风险的候选国家。`;
-      } else {
-        const topCountries = getAlternativeTopCountries(product);
-        topCountries.forEach((item) => {
-          styleMap[item.country] = { fill: getAlternativeTierColor(item.tierLabel) };
-        });
-        const legendLabels = [...new Set(topCountries.map((item) => item.tierLabel).filter(Boolean))];
-        legend = legendLabels.map((label) => ({ label, color: getAlternativeTierColor(label) }));
-        title = `${getProductMeta(product.id).name}${getAlternativeModeLabel()}国家布局`;
-        kicker = "替代视图";
-        caption =
-          state.alternativeHorizon === "long"
-            ? "展示长期替代潜能前 10 个国家。鼠标悬停可查看长期替代潜能、风险等级与建议。"
-            : "展示短期替代潜能前 10 个国家。鼠标悬停可查看短期替代潜能、风险等级与建议。";
-      }
-    }
-
-    return { styleMap, legend, title, kicker, caption, hiddenCountries, replacementArrows };
-  }
-
-  function renderAlternativeSide(product, country) {
-    const shortKey = resolveCountryKey(country, (product.alternatives.shortTerm || []).map((item) => item.country));
-    const longKey = resolveCountryKey(country, (product.alternatives.longTerm || []).map((item) => item.country));
-    const shortItem = (product.alternatives.shortTerm || []).find((item) => item.country === shortKey);
-    const longItem = (product.alternatives.longTerm || []).find((item) => item.country === longKey);
-
-    els.detailTitle.textContent = labelCountry(country);
-    els.detailBadge.textContent = shortItem ? tierMeta(shortItem.tier).label : "候选国";
-    els.detailBadge.style.background = shortItem ? `${tierMeta(shortItem.tier).color}22` : "rgba(0,0,0,0.06)";
-
-    els.detailHighlights.innerHTML = `
-      <article class="detail-chip"><div class="detail-chip-label">短期潜能</div><div class="detail-chip-value">${shortItem ? shortItem.potential.toFixed(4) : "--"}</div></article>
-      <article class="detail-chip"><div class="detail-chip-label">长期潜能</div><div class="detail-chip-value">${longItem ? longItem.potential.toFixed(4) : "--"}</div></article>
-      <article class="detail-chip"><div class="detail-chip-label">平均出口</div><div class="detail-chip-value">${shortItem ? `${shortItem.exportAvg.toFixed(2)} 百万吨` : "--"}</div></article>
-      <article class="detail-chip"><div class="detail-chip-label">理论上限</div><div class="detail-chip-value">${longItem ? formatMt(longItem.potentialProduction) : "--"}</div></article>
-    `;
-
-    const altRows = product.alternatives.shortTerm
-      .slice(0, 8)
-      .map((item) => {
-        const max = Math.max(...product.alternatives.shortTerm.slice(0, 8).map((entry) => entry.potential));
-        const width = Math.max(8, (item.potential / max) * 100);
-        return `
-          <div style="display:grid;grid-template-columns:88px 1fr 56px;gap:8px;align-items:center;font-size:12px;">
-            <strong>${labelCountry(item.country)}</strong>
-            <div style="position:relative;height:8px;border-radius:999px;background:rgba(31,107,69,0.12);overflow:hidden;">
-              <span style="position:absolute;inset:0 auto 0 0;width:${width}%;background:${tierMeta(item.tier).color};border-radius:999px;"></span>
-            </div>
-            <span>${item.potential.toFixed(3)}</span>
-          </div>
-        `;
-      })
-      .join("");
-
-    els.chartStack.innerHTML = `
-      <article class="chart-card">
-        <h4>短期替代潜能对比</h4>
-        <div class="single-chart">
-          <div class="single-chart-title">前八候选国</div>
-          <div style="display:grid;gap:8px;padding:2px 8px 8px;">${altRows}</div>
-        </div>
-      </article>
-      <article class="chart-card">
-        <h4>长期替代空间</h4>
-        <div class="single-chart">
-          <div class="single-chart-title">当前选中国家</div>
-          <p class="chart-caption" style="padding:4px 8px 10px;">
-            ${longItem ? `${labelCountry(country)} 的长期潜能为 ${longItem.potential.toFixed(4)}，理论产能上限 ${formatMt(longItem.potentialProduction)}，当前产能 ${formatMt(longItem.actualProduction)}。` : "当前没有匹配到长期替代结果。"}
-          </p>
-        </div>
-      </article>
-      <article class="chart-card">
-        <h4>布局建议</h4>
-        <div class="single-chart">
-          <div class="single-chart-title">策略提示</div>
-          <p class="chart-caption" style="padding:4px 8px 10px;">短期优先配置第一梯队国家用于快速补量，中长期结合长期替代潜能结果规划更稳的进口多元化结构。</p>
-        </div>
-      </article>
-    `;
   }
 
   function renderSidePanel(product) {
@@ -3280,11 +2083,7 @@
     }
     state.selectedCountry = country;
 
-    if (state.module === "overview") {
-      renderOverviewSide(product, country);
-      enhanceOverviewProducerCard();
-      enhanceOverviewTrendCards();
-    } else if (state.module === "risk") {
+    if (state.module === "risk") {
       renderRiskSide(product, country);
     } else {
       renderAlternativeSide(product, country);
@@ -3420,130 +2219,6 @@
     return null;
   }
 
-  function renderYearSwitcher(product) {
-    if (state.module === "overview") {
-      const years = getRecentOverviewYears(product);
-      ensureOverviewYear(product);
-      els.yearSwitcher.classList.remove("hidden");
-      els.yearSwitcher.innerHTML = years
-        .map(
-          (year) => `
-            <button class="year-btn ${String(year) === String(state.selectedOverviewYear) ? "active" : ""}" type="button" data-year="${year}">
-              ${year}年
-            </button>
-          `,
-        )
-        .join("");
-
-      els.yearSwitcher.querySelectorAll("[data-year]").forEach((button) => {
-        button.addEventListener("click", () => {
-          state.selectedOverviewYear = button.dataset.year;
-          state.selectedCountry = null;
-          render();
-        });
-      });
-      return;
-    }
-
-    if (state.module === "alternative") {
-      const selectedCountry = getSelectedCountry(product);
-      els.yearSwitcher.classList.remove("hidden");
-      els.yearSwitcher.innerHTML = `
-        <button class="year-btn ${state.alternativeFlowMode ? "active" : ""}" type="button" data-alt-flow="toggle">
-          ${state.alternativeFlowMode ? "恢复原布局" : "显示替代流向"}
-        </button>
-      `;
-
-      const toggleButton = els.yearSwitcher.querySelector("[data-alt-flow='toggle']");
-      if (toggleButton) {
-        toggleButton.addEventListener("click", () => {
-          if (!selectedCountry) return;
-          state.alternativeFlowMode = !state.alternativeFlowMode;
-          render();
-        });
-      }
-      return;
-    }
-
-    els.yearSwitcher.innerHTML = "";
-    els.yearSwitcher.classList.add("hidden");
-  }
-
-  function getModuleCountryStyles(product) {
-    const styleMap = {};
-    let legend = [];
-    let title = "";
-    let kicker = "";
-    let caption = "";
-    let hiddenCountries = [];
-    let replacementArrows = [];
-
-    if (state.module === "overview") {
-      const selectedYear = String(state.selectedOverviewYear || product.years.at(getOverviewYearIndex(product)));
-      getOverviewCountries(product).forEach((country, index) => {
-        const colors = ["#1f6b45", "#2f7b53", "#4d986a", "#76ac84", "#a0c1a3"];
-        styleMap[country] = { fill: colors[index] };
-      });
-      legend = [
-        { label: `${selectedYear}年中国前五大进口来源国`, color: palette.primary },
-        { label: "其他国家", color: palette.nodata },
-      ];
-      title = `${selectedYear}年${getProductMeta(product.id).name}进口来源高亮地图`;
-      kicker = "最近三年切换";
-      caption = `点击高亮国家后，右侧会展示该国生产数据、中国自该国进口量与价格走势，以及中国对该国进口依赖度变化。当前查看：${selectedYear} 年。`;
-    } else if (state.module === "risk") {
-      Object.entries(product.risk).forEach(([country, info]) => {
-        styleMap[country] = { fill: riskMeta(info.level).color };
-      });
-      legend = [
-        { label: "极高风险", color: palette.veryHigh },
-        { label: "高风险", color: palette.high },
-        { label: "中风险", color: palette.medium },
-        { label: "低风险", color: palette.low },
-      ];
-      title = `${getProductMeta(product.id).name}CI 风险地图`;
-      kicker = "风险视图";
-      caption = "展示 2022-2024 年 CI 风险分级结果，可快速识别高风险供应节点。";
-    } else {
-      const sourceCountry = getSelectedCountry(product);
-
-      if (state.alternativeFlowMode && sourceCountry) {
-        const candidates = getAlternativeReplacementCandidates(product, sourceCountry);
-        candidates.forEach((item, index) => {
-          const colors = ["#1f6b45", "#3c8b57", "#5e9e63", "#83b475", "#a7c78f", "#cad9af"];
-          styleMap[item.country] = { fill: colors[index] || tierMeta(item.tier).color };
-        });
-        hiddenCountries = [sourceCountry];
-        replacementArrows = candidates.map((item) => ({
-          from: sourceCountry,
-          to: item.country,
-          color: tierMeta(item.tier).color,
-        }));
-        legend = [
-          { label: "已移除原来源国", color: "#d5ddd6" },
-          { label: "可替代且非高风险国家", color: palette.tier1 },
-        ];
-        title = `${labelCountry(sourceCountry)}替代流向模拟`;
-        kicker = "替代演示";
-        caption = `当前已隐藏 ${labelCountry(sourceCountry)}，并高亮 ${candidates.length} 个可承接替代需求且不属于高风险的候选国家。`;
-      } else {
-        getAlternativeCountries(product).forEach((item) => {
-          styleMap[item.country] = { fill: tierMeta(item.tier).color };
-        });
-        legend = [
-          { label: "第一梯队", color: palette.tier1 },
-          { label: "第二梯队", color: palette.tier2 },
-          { label: "第三梯队", color: palette.tier3 },
-        ];
-        title = `${getProductMeta(product.id).name}替代产能布局`;
-        kicker = "替代视图";
-        caption = "展示短期替代潜能较高的国家分布，并联动查看长期替代空间。";
-      }
-    }
-
-    return { styleMap, legend, title, kicker, caption, hiddenCountries, replacementArrows };
-  }
-
   function drawMapBackdrop() {
     const gridLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
     gridLayer.setAttribute("class", "map-grid-layer");
@@ -3591,107 +2266,9 @@
     els.worldMap.appendChild(gridLayer);
   }
 
-  function drawMapFocusHalo(countries, styleMap) {
-    const haloLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    haloLayer.setAttribute("class", "map-halo-layer");
-
-    countries.forEach((country, index) => {
-      const point = getCountryAnchor(country);
-      if (!point) return;
-
-      const baseColor = styleMap[country]?.fill || palette.primary;
-      const halo = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      halo.setAttribute("cx", String(point[0]));
-      halo.setAttribute("cy", String(point[1]));
-      halo.setAttribute("r", String(18 + index * 4));
-      halo.setAttribute("fill", colorWithAlpha(baseColor, Math.max(0.08, 0.16 - index * 0.02)));
-      halo.setAttribute("class", "map-halo");
-      halo.style.setProperty("--halo-index", String(index));
-      haloLayer.appendChild(halo);
-    });
-
-    els.worldMap.appendChild(haloLayer);
-  }
-
-  function renderMapFocus(product, styleMap) {
+  function renderMapFocus() {
+    // 风险/替代模块改用右侧详情与 tooltip，地图焦点卡已停用
     els.mapFocus.innerHTML = "";
-    return;
-
-    if (state.module === "alternative") {
-      els.mapFocus.innerHTML = "";
-      return;
-    }
-
-    const country = getSelectedCountry(product);
-    if (!country) {
-      els.mapFocus.innerHTML = "";
-      return;
-    }
-
-    const importInfo = product.imports?.[resolveCountryKey(country, product.imports)];
-    const riskInfo = product.risk?.[resolveCountryKey(country, product.risk)];
-    const shortItem = (product.alternatives.shortTerm || []).find(
-      (item) => normalizeCountryName(item.country) === normalizeCountryName(country),
-    );
-    const longItem = (product.alternatives.longTerm || []).find(
-      (item) => normalizeCountryName(item.country) === normalizeCountryName(country),
-    );
-    const yearIndex = getOverviewYearIndex(product);
-    const selectedYear = String(state.selectedOverviewYear || product.years.at(yearIndex));
-    const focusColor = styleMap[country]?.fill || palette.primary;
-
-    let kicker = "Current Focus";
-    let note = "";
-    let stats = [];
-
-    if (state.module === "overview") {
-      kicker = `${selectedYear} Supply Snapshot`;
-      stats = [
-        { label: "进口量", value: importInfo ? formatMt(getSeriesValue(importInfo.volume, yearIndex) || 0) : "--" },
-        { label: "依赖度", value: importInfo ? formatPct(getSeriesValue(importInfo.dependency, yearIndex) || 0) : "--" },
-        { label: "价格", value: importInfo ? `${getSeriesValue(importInfo.price, yearIndex) || "--"} 美元/吨` : "--" },
-        { label: "角色", value: "重点来源国" },
-      ];
-      note = `当前地图优先强调中国在 ${selectedYear} 年的主要进口来源和集中度变化。`;
-    } else if (state.module === "risk") {
-      kicker = "Risk Lens";
-      stats = [
-        { label: "风险级别", value: riskInfo ? riskMeta(riskInfo.level).label : "--" },
-        { label: "CI 2024", value: riskInfo ? riskInfo.ci2024.toFixed(4) : "--" },
-        { label: "CI 2023", value: riskInfo ? riskInfo.ci2023.toFixed(4) : "--" },
-        { label: "CI 2022", value: riskInfo ? riskInfo.ci2022.toFixed(4) : "--" },
-      ];
-      note = "风险模块会把全球供应节点按实验室风险等级重新着色，方便快速扫描脆弱区域。";
-    } else {
-      kicker = state.alternativeFlowMode ? "Replacement Flow" : "Alternative Capacity";
-      stats = [
-        { label: "短期潜能", value: shortItem ? shortItem.potential.toFixed(4) : "--" },
-        { label: "长期潜能", value: longItem ? longItem.potential.toFixed(4) : "--" },
-        { label: "梯队", value: shortItem ? tierMeta(shortItem.tier).label : state.alternativeFlowMode ? "替代起点" : "--" },
-        { label: "出口均值", value: shortItem ? `${shortItem.exportAvg.toFixed(2)} 百万吨` : "--" },
-      ];
-      note = state.alternativeFlowMode
-        ? "当前视图模拟移除原来源国后的替代承接方向，优先保留非高风险候选国。"
-        : "替代模块会突出短期承接能力更强的国家，并联动右侧查看长期扩张空间。";
-    }
-
-    els.mapFocus.innerHTML = `
-      <div class="map-focus-kicker">${kicker}</div>
-      <div class="map-focus-title" style="color:${focusColor}">${labelCountry(country)}</div>
-      <div class="map-focus-grid">
-        ${stats
-          .map(
-            (item) => `
-              <article class="map-focus-stat">
-                <div class="map-focus-label">${item.label}</div>
-                <div class="map-focus-value">${item.value}</div>
-              </article>
-            `,
-          )
-          .join("")}
-      </div>
-      <div class="map-focus-note">${note}</div>
-    `;
   }
 
   function updateMapSelection(product) {
@@ -3774,56 +2351,7 @@
     return dataset.find((item) => item.country === key) || null;
   }
 
-  function renderYearSwitcher(product) {
-    if (state.module === "overview") {
-      const years = getRecentOverviewYears(product);
-      ensureOverviewYear(product);
-      els.yearSwitcher.classList.remove("hidden");
-      els.yearSwitcher.innerHTML = years
-        .map(
-          (year) => `
-            <button class="year-btn ${String(year) === String(state.selectedOverviewYear) ? "active" : ""}" type="button" data-year="${year}">
-              ${year}年
-            </button>
-          `,
-        )
-        .join("");
-
-      els.yearSwitcher.querySelectorAll("[data-year]").forEach((button) => {
-        button.addEventListener("click", () => {
-          state.selectedOverviewYear = button.dataset.year;
-          state.selectedCountry = null;
-          render();
-        });
-      });
-      return;
-    }
-
-    if (state.module === "alternative") {
-      els.yearSwitcher.classList.remove("hidden");
-      els.yearSwitcher.innerHTML = `
-        <button class="year-btn ${state.alternativeHorizon === "short" ? "active" : ""}" type="button" data-alt-horizon="short">短期替代</button>
-        <button class="year-btn ${state.alternativeHorizon === "long" ? "active" : ""}" type="button" data-alt-horizon="long">长期替代</button>
-      `;
-
-      els.yearSwitcher.querySelectorAll("[data-alt-horizon]").forEach((button) => {
-        button.addEventListener("click", () => {
-          state.alternativeHorizon = button.dataset.altHorizon;
-          state.alternativeFlowMode = false;
-          state.selectedCountry = null;
-          render();
-        });
-      });
-      return;
-    }
-
-    els.yearSwitcher.innerHTML = "";
-    els.yearSwitcher.classList.add("hidden");
-  }
-
   function getTooltipRows(product, mapCountryName) {
-    const importsKey = resolveCountryKey(mapCountryName, product.imports);
-    const producersKey = resolveCountryKey(mapCountryName, product.producers);
     const riskKey = resolveCountryKey(mapCountryName, product.risk);
     const shortKey = resolveCountryKey(mapCountryName, (product.alternatives.shortTerm || []).map((item) => item.country));
     const longKey = resolveCountryKey(mapCountryName, (product.alternatives.longTerm || []).map((item) => item.country));
@@ -3831,20 +2359,7 @@
     const rows = [];
     let meta = "暂无监测数据";
 
-    if (state.module === "overview") {
-      const yearIndex = getOverviewYearIndex(product);
-      const selectedYear = String(state.selectedOverviewYear || product.years.at(yearIndex));
-      const importInfo = importsKey ? product.imports[importsKey] : null;
-      const producerInfo = producersKey ? product.producers[producersKey] : null;
-
-      if (importInfo) {
-        meta = `${selectedYear}年进口来源国`;
-        rows.push([`${selectedYear}进口量`, formatMt(getSeriesValue(importInfo.volume, yearIndex) || 0)]);
-        rows.push([`${selectedYear}价格`, `${getSeriesValue(importInfo.price, yearIndex) || "--"} 美元/吨`]);
-        rows.push([`${selectedYear}依赖度`, formatPct(getSeriesValue(importInfo.dependency, yearIndex) || 0)]);
-      }
-      if (producerInfo) rows.push([`${selectedYear}产量`, formatMt(getSeriesValue(producerInfo.output, yearIndex) || 0)]);
-    } else if (state.module === "risk") {
+    if (state.module === "risk") {
       const risk = riskKey ? product.risk[riskKey] : null;
       if (risk) {
         const selectedYear = ensureRiskYear();
@@ -3860,73 +2375,25 @@
       const item = state.alternativeHorizon === "long"
         ? (product.alternatives.longTerm || []).find((entry) => entry.country === longKey)
         : (product.alternatives.shortTerm || []).find((entry) => entry.country === shortKey);
+      const riskLabel = getAlternativeRiskLabel(product, riskKey || mapCountryName);
+
       if (item) {
         const suggestion = getAlternativeSuggestion(product, item);
-        meta = `${getAlternativeModeLabel()} | ${item.tierLabel}`;
+        meta = `${getAlternativeModeLabel()} | ${riskLabel}`;
         rows.push([`${getAlternativeModeLabel()}潜能`, item.potential.toFixed(4)]);
-        rows.push(["风险等级", getAlternativeRiskLabel(product, item.country)]);
+        rows.push(["风险等级", riskLabel]);
         rows.push(["替代建议", suggestion.title]);
+      } else {
+        meta = riskLabel;
+        rows.push(["风险等级", riskLabel]);
       }
     }
 
     return {
-      title: labelCountry(importsKey || producersKey || riskKey || shortKey || longKey || mapCountryName),
+      title: labelCountry(riskKey || shortKey || longKey || mapCountryName),
       meta,
       rows: rows.length ? rows : [["状态", "当前模块暂无可展示数据"]],
     };
-  }
-
-  function getModuleCountryStyles(product) {
-    const styleMap = {};
-    let legend = [];
-    let title = "";
-    let kicker = "";
-    let caption = "";
-    let hiddenCountries = [];
-    let replacementArrows = [];
-
-    if (state.module === "overview") {
-      const selectedYear = String(state.selectedOverviewYear || product.years.at(getOverviewYearIndex(product)));
-      getOverviewCountries(product).forEach((country, index) => {
-        const colors = ["#1f6b45", "#2f7b53", "#4d986a", "#76ac84", "#a0c1a3"];
-        styleMap[country] = { fill: colors[index] };
-      });
-      legend = [
-        { label: `${selectedYear}年中国前五大进口来源国`, color: palette.primary },
-        { label: "其他国家", color: palette.nodata },
-      ];
-      title = `${selectedYear}年${getProductMeta(product.id).name}进口来源高亮地图`;
-      kicker = "最近三年切换";
-      caption = `点击高亮国家后，右侧会展示该国生产数据、中国自该国进口量与价格走势，以及中国对该国进口依赖度变化。当前查看：${selectedYear} 年。`;
-    } else if (state.module === "risk") {
-      Object.entries(product.risk).forEach(([country, info]) => {
-        styleMap[country] = { fill: riskMeta(info.level).color };
-      });
-      legend = [
-        { label: "极高风险", color: palette.veryHigh },
-        { label: "高风险", color: palette.high },
-        { label: "中风险", color: palette.medium },
-        { label: "低风险", color: palette.low },
-      ];
-      title = `${getProductMeta(product.id).name}CI 风险地图`;
-      kicker = "风险视图";
-      caption = "展示该国 2022-2024 年的 D 破坏性、T 传播性和 V 脆弱性三者数值，分年展示。";
-    } else {
-      const topCountries = getAlternativeTopCountries(product);
-      topCountries.forEach((item) => {
-        styleMap[item.country] = { fill: getAlternativeTierColor(item.tierLabel) };
-      });
-      const legendLabels = [...new Set(topCountries.map((item) => item.tierLabel).filter(Boolean))];
-      legend = legendLabels.map((label) => ({ label, color: getAlternativeTierColor(label) }));
-      title = `${getProductMeta(product.id).name}${getAlternativeModeLabel()}国家布局`;
-      kicker = "替代视图";
-      caption =
-        state.alternativeHorizon === "long"
-          ? "展示长期替代潜能前 10 个国家。鼠标悬停可查看长期替代潜能、风险等级与建议。"
-          : "展示短期替代潜能前 10 个国家。鼠标悬停可查看短期替代潜能、风险等级与建议。";
-    }
-
-    return { styleMap, legend, title, kicker, caption, hiddenCountries, replacementArrows };
   }
 
   function renderAlternativeSide(product, country) {
@@ -3938,69 +2405,6 @@
 
     renderReplacementFlowEmptyState();
     return;
-
-    const item = getAlternativeSelectedItem(product, country);
-    const riskLabel = item ? getAlternativeRiskLabel(product, item.country) : "暂无风险分级";
-    const suggestion = getAlternativeSuggestion(product, item);
-    const topCountries = getAlternativeTopCountries(product);
-    const maxPotential = Math.max(...topCountries.map((entry) => Number(entry.potential || 0)), 0.0001);
-    const title = state.alternativeHorizon === "long" ? "长期替代建议" : "短期替代建议";
-    const note =
-      state.alternativeHorizon === "long"
-        ? "当前长期建议基于：长期替代潜能分级、CI 风险等级、对华现有进口基础进行综合判断。后续可按你提供的正式分级表替换。"
-        : "当前短期建议基于：短期替代潜能分级、CI 风险等级、对华现有进口基础进行综合判断。后续可按你提供的正式分级表替换。";
-
-    els.detailTitle.textContent = labelCountry(country);
-    els.detailBadge.textContent = item ? item.tierLabel : "待评估";
-    els.detailBadge.style.background = item ? `${getAlternativeTierColor(item.tierLabel)}22` : "rgba(0,0,0,0.06)";
-
-    els.detailHighlights.innerHTML = item
-      ? `
-        <article class="detail-chip"><div class="detail-chip-label">${getAlternativeModeLabel()}潜能</div><div class="detail-chip-value">${item.potential.toFixed(4)}</div></article>
-        <article class="detail-chip"><div class="detail-chip-label">风险等级</div><div class="detail-chip-value">${riskLabel}</div></article>
-        <article class="detail-chip"><div class="detail-chip-label">能力分级</div><div class="detail-chip-value">${item.tierLabel}</div></article>
-        <article class="detail-chip"><div class="detail-chip-label">建议类型</div><div class="detail-chip-value">${suggestion.title}</div></article>
-      `
-      : "";
-
-    const rankingRows = topCountries
-      .map((entry, index) => {
-        const width = Math.max(8, (Number(entry.potential || 0) / maxPotential) * 100);
-        const active = normalizeCountryName(entry.country) === normalizeCountryName(country) ? " is-active" : "";
-        return `
-          <div class="alt-rank-row${active}">
-            <div class="alt-rank-order">${index + 1}</div>
-            <div class="alt-rank-main">
-              <div class="alt-rank-head">
-                <strong>${labelCountry(entry.country)}</strong>
-                <span class="alt-rank-tag" style="background:${getAlternativeTierColor(entry.tierLabel)}18;color:${getAlternativeTierColor(entry.tierLabel)};">${entry.tierLabel}</span>
-              </div>
-              <div class="alt-rank-bar">
-                <span style="width:${width}%;background:${getAlternativeTierColor(entry.tierLabel)};"></span>
-              </div>
-            </div>
-            <div class="alt-rank-value">${Number(entry.potential || 0).toFixed(4)}</div>
-          </div>
-        `;
-      })
-      .join("");
-
-    els.chartStack.innerHTML = `
-      <article class="chart-card">
-        <h4>${getAlternativeModeLabel()}前 10 国家</h4>
-        <div class="single-chart">
-          <div class="single-chart-title">按替代潜能排序</div>
-          <div class="alt-rank-list">${rankingRows}</div>
-        </div>
-      </article>
-      <article class="chart-card">
-        <h4>${title}</h4>
-        <div class="single-chart">
-          <div class="single-chart-title">${labelCountry(country)}</div>
-          <p class="chart-caption alt-advice-copy">${suggestion.text}</p>
-        </div>
-      </article>
-    `;
   }
 
   function renderReplacementFlowEmptyState() {
@@ -4020,16 +2424,18 @@
     `;
   }
 
-  function getFlowRiskColor(riskLabel) {
-    if (riskLabel === "高风险") return palette.high;
-    if (riskLabel === "中风险") return palette.medium;
-    if (riskLabel === "低风险") return palette.low;
-    return palette.negligible;
-  }
-
   function renderReplacementFlowSide(flowScenario) {
+    const product = getProduct();
     const modeLabel = getAlternativeModeLabel();
-    const replacements = flowScenario.replacements.slice(0, 10);
+    const replacements = flowScenario.replacements.slice(0, 10).map((replacement) => {
+      const altItem = getAlternativeSelectedItem(product, replacement.country);
+      return {
+        ...replacement,
+        potential: altItem?.potential ?? null,
+        tierLabel: altItem?.tierLabel || "",
+      };
+    });
+    const maxPotential = Math.max(...replacements.map((item) => Number(item.potential || 0)), 0.0001);
 
     els.detailTitle.textContent = labelCountry(flowScenario.country);
     els.detailBadge.textContent = flowScenario.conclusion || "待评估";
@@ -4042,16 +2448,35 @@
 
     const rankingRows = replacements
       .map((replacement, index) => {
-        const riskColor = getFlowRiskColor(replacement.risk);
+        const riskKey = resolveCountryKey(replacement.country, product.risk);
+        const risk = riskKey ? product.risk[riskKey] : null;
+        const riskLabel = risk
+          ? riskMeta(risk.level).label
+          : replacement.risk || "暂无风险分级";
+        const riskColor = risk ? riskMeta(risk.level).color : palette.negligible;
+        const barColor = riskColor;
+        const potentialText =
+          replacement.potential != null ? Number(replacement.potential).toFixed(4) : "暂无";
+        const width =
+          replacement.potential != null
+            ? Math.max(8, (Number(replacement.potential) / maxPotential) * 100)
+            : 0;
         return `
           <div class="alt-rank-row alt-rank-row--flow">
             <div class="alt-rank-order">${index + 1}</div>
             <div class="alt-rank-main">
               <div class="alt-rank-head">
                 <strong>${labelCountry(replacement.country)}</strong>
-                <span class="alt-rank-tag" style="background:${riskColor}18;color:${riskColor};">${replacement.risk || "暂无分级"}</span>
+                <span class="alt-rank-tag" style="background:${riskColor}18;color:${riskColor};">${riskLabel}</span>
+              </div>
+              <div class="alt-rank-bar">
+                <span style="width:${width}%;background:${barColor};"></span>
               </div>
               ${replacement.relationship ? `<div class="alt-rank-meta">${replacement.relationship}</div>` : ""}
+            </div>
+            <div class="alt-rank-value">
+              <span class="alt-rank-value-label">潜能值</span>
+              <strong class="alt-rank-value-num">${potentialText}</strong>
             </div>
           </div>
         `;
@@ -4063,7 +2488,7 @@
       <article class="chart-card chart-card--flow-ranking">
         <h4>${modeLabel}前 10 国家</h4>
         <div class="single-chart">
-          <div class="single-chart-title">${labelCountry(flowScenario.country)}断供场景 · 按表格顺序</div>
+          <div class="single-chart-title">${labelCountry(flowScenario.country)} · 替代潜能</div>
           <div class="alt-rank-list alt-rank-list--flow">${rankingRows}</div>
         </div>
       </article>
@@ -4094,7 +2519,10 @@
       replacementArrows = [],
     } = getModuleCountryStyles(product);
     const styleKeys = Object.keys(styleMap);
-    const selectedCountry = getSelectedCountry(product);
+    const selectedCountry =
+      state.alternativeFlowMode && state.alternativeDisruptionCountry
+        ? state.alternativeDisruptionCountry
+        : getSelectedCountry(product);
 
     renderLegend(legend);
     els.mapKicker.textContent = kicker;
@@ -4132,67 +2560,6 @@
     renderSidePanel(product);
   }
 
-  function renderYearSwitcher(product) {
-    if (state.module === "overview") {
-      const years = getRecentOverviewYears(product);
-      ensureOverviewYear(product);
-      els.yearSwitcher.classList.remove("hidden");
-      els.yearSwitcher.innerHTML = years
-        .map(
-          (year) => `
-            <button class="year-btn ${String(year) === String(state.selectedOverviewYear) ? "active" : ""}" type="button" data-year="${year}">
-              ${year}年
-            </button>
-          `,
-        )
-        .join("");
-
-      els.yearSwitcher.querySelectorAll("[data-year]").forEach((button) => {
-        button.addEventListener("click", () => {
-          state.selectedOverviewYear = button.dataset.year;
-          state.selectedCountry = null;
-          render();
-        });
-      });
-      return;
-    }
-
-    if (state.module === "alternative") {
-      const selectedCountry = getSelectedCountry(product);
-      els.yearSwitcher.classList.remove("hidden");
-      els.yearSwitcher.innerHTML = `
-        <button class="year-btn ${state.alternativeHorizon === "short" ? "active" : ""}" type="button" data-alt-horizon="short">短期替代</button>
-        <button class="year-btn ${state.alternativeHorizon === "long" ? "active" : ""}" type="button" data-alt-horizon="long">长期替代</button>
-        <button class="year-btn ${state.alternativeFlowMode ? "active" : ""}" type="button" data-alt-flow="toggle">
-          ${state.alternativeFlowMode ? "恢复原布局" : "显示替代流向"}
-        </button>
-      `;
-
-      els.yearSwitcher.querySelectorAll("[data-alt-horizon]").forEach((button) => {
-        button.addEventListener("click", () => {
-          state.alternativeHorizon = button.dataset.altHorizon;
-          state.alternativeFlowMode = false;
-          state.selectedCountry = null;
-          render();
-        });
-      });
-
-      const toggleButton = els.yearSwitcher.querySelector("[data-alt-flow='toggle']");
-      if (toggleButton) {
-        toggleButton.addEventListener("click", () => {
-          if (!selectedCountry) return;
-          state.alternativeFlowMode = !state.alternativeFlowMode;
-          renderYearSwitcher(product);
-          syncAlternativeFlowMode(product);
-        });
-      }
-      return;
-    }
-
-    els.yearSwitcher.innerHTML = "";
-    els.yearSwitcher.classList.add("hidden");
-  }
-
   function getModuleCountryStyles(product) {
     const styleMap = {};
     let legend = [];
@@ -4202,20 +2569,7 @@
     let hiddenCountries = [];
     let replacementArrows = [];
 
-    if (state.module === "overview") {
-      const selectedYear = String(state.selectedOverviewYear || product.years.at(getOverviewYearIndex(product)));
-      getOverviewCountries(product).forEach((country, index) => {
-        const colors = ["#1f6b45", "#2f7b53", "#4d986a", "#76ac84", "#a0c1a3"];
-        styleMap[country] = { fill: colors[index] };
-      });
-      legend = [
-        { label: `${selectedYear}年中国前五大进口来源国`, color: palette.primary },
-        { label: "其他国家", color: palette.nodata },
-      ];
-      title = `${selectedYear}年${getProductMeta(product.id).name}进口来源高亮地图`;
-      kicker = "最近三年切换";
-      caption = `点击高亮国家后，右侧会展示该国生产数据、中国自该国进口量与价格走势，以及中国对该国进口依赖度变化。当前查看：${selectedYear} 年。`;
-    } else if (state.module === "risk") {
+    if (state.module === "risk") {
       Object.entries(product.risk).forEach(([country, info]) => {
         styleMap[country] = { fill: riskMeta(info.level).color };
       });
@@ -4239,7 +2593,7 @@
             fill: flowColors[index] || getAlternativeTierColor(item.tierLabel),
           };
         });
-        hiddenCountries = [sourceCountry];
+        hiddenCountries = [];
         replacementArrows = candidates.map((item) => ({
           from: sourceCountry,
           to: item.country,
@@ -4251,7 +2605,7 @@
         ];
         title = `${labelCountry(sourceCountry)}替代流向模拟`;
         kicker = "替代演示";
-        caption = `当前已隐藏 ${labelCountry(sourceCountry)}，并高亮 ${candidates.length} 个可承接替代需求且不属于高风险的候选国家。`;
+        caption = `当前加粗显示 ${labelCountry(sourceCountry)}，并高亮 ${candidates.length} 个可承接替代需求且不属于高风险的候选国家。`;
       } else {
         const topCountries = getAlternativeTopCountries(product);
         topCountries.forEach((item) => {
@@ -4271,471 +2625,64 @@
     return { styleMap, legend, title, kicker, caption, hiddenCountries, replacementArrows };
   }
 
-  function renderYearSwitcher(product) {
-    if (state.module === "overview") {
-      const years = getRecentOverviewYears(product);
-      ensureOverviewYear(product);
-      els.yearSwitcher.classList.remove("hidden");
-      els.yearSwitcher.innerHTML = years
-        .map(
-          (year) => `
-            <button class="year-btn ${String(year) === String(state.selectedOverviewYear) ? "active" : ""}" type="button" data-year="${year}">
-              ${year}骞?            </button>
-          `,
-        )
-        .join("");
-
-      els.yearSwitcher.querySelectorAll("[data-year]").forEach((button) => {
-        button.addEventListener("click", () => {
-          state.selectedOverviewYear = button.dataset.year;
-          state.selectedCountry = null;
-          render();
-        });
-      });
-      return;
-    }
-
-    if (state.module === "alternative") {
-      els.yearSwitcher.classList.remove("hidden");
-      els.yearSwitcher.innerHTML = `
-        <button class="year-btn ${state.alternativeHorizon === "short" ? "active" : ""}" type="button" data-alt-horizon="short">鐭湡鏇夸唬</button>
-        <button class="year-btn ${state.alternativeHorizon === "long" ? "active" : ""}" type="button" data-alt-horizon="long">闀挎湡鏇夸唬</button>
-      `;
-
-      els.yearSwitcher.querySelectorAll("[data-alt-horizon]").forEach((button) => {
-        button.addEventListener("click", () => {
-          state.alternativeHorizon = button.dataset.altHorizon;
-          state.alternativeFlowMode = false;
-          state.selectedCountry = null;
-          render();
-        });
-      });
-      return;
-    }
-
-    els.yearSwitcher.innerHTML = "";
-    els.yearSwitcher.classList.add("hidden");
-  }
-
-  function renderYearSwitcher(product) {
-    if (state.module === "overview") {
-      const years = getRecentOverviewYears(product);
-      ensureOverviewYear(product);
-      els.yearSwitcher.classList.remove("hidden");
-      els.yearSwitcher.innerHTML = `
-        <label class="year-select-wrap" for="overviewYearSelect">
-          <span class="year-select-label">年份</span>
-          <select class="year-select" id="overviewYearSelect" aria-label="选择年份">
-            ${years
-              .map(
-                (year) =>
-                  `<option value="${year}" ${String(year) === String(state.selectedOverviewYear) ? "selected" : ""}>${year}年</option>`,
-              )
-              .join("")}
-          </select>
-        </label>
-      `;
-
-      els.yearSwitcher.querySelector("#overviewYearSelect")?.addEventListener("change", (event) => {
-        state.selectedOverviewYear = event.target.value;
-        state.selectedCountry = null;
-        render();
-      });
-      return;
-    }
-
-    if (state.module === "alternative") {
-      els.yearSwitcher.classList.remove("hidden");
-      els.yearSwitcher.innerHTML = `
-        <button class="year-btn ${state.alternativeHorizon === "short" ? "active" : ""}" type="button" data-alt-horizon="short">短期替代</button>
-        <button class="year-btn ${state.alternativeHorizon === "long" ? "active" : ""}" type="button" data-alt-horizon="long">长期替代</button>
-      `;
-
-      els.yearSwitcher.querySelectorAll("[data-alt-horizon]").forEach((button) => {
-        button.addEventListener("click", () => {
-          state.alternativeHorizon = button.dataset.altHorizon;
-          state.alternativeFlowMode = false;
-          state.selectedCountry = null;
-          render();
-        });
-      });
-      return;
-    }
-
-    els.yearSwitcher.innerHTML = "";
-    els.yearSwitcher.classList.add("hidden");
-  }
-
-  function renderYearSwitcher(product) {
-    if (state.module === "overview") {
-      const years = getRecentOverviewYears(product);
-      ensureOverviewYear(product);
-      els.yearSwitcher.classList.remove("hidden");
-      els.yearSwitcher.innerHTML = `
-        <label class="year-select-wrap" for="overviewYearSelect">
-          <span class="year-select-label">年份</span>
-          <select class="year-select" id="overviewYearSelect" aria-label="选择年份">
-            ${years
-              .map(
-                (year) =>
-                  `<option value="${year}" ${String(year) === String(state.selectedOverviewYear) ? "selected" : ""}>${year}年</option>`,
-              )
-              .join("")}
-          </select>
-        </label>
-      `;
-
-      els.yearSwitcher.querySelector("#overviewYearSelect")?.addEventListener("change", (event) => {
-        state.selectedOverviewYear = event.target.value;
-        state.selectedCountry = null;
-        render();
-      });
-      return;
-    }
-
-    if (state.module === "alternative") {
-      els.yearSwitcher.classList.remove("hidden");
-      els.yearSwitcher.innerHTML = `
-        <button class="year-btn ${state.alternativeHorizon === "short" ? "active" : ""}" type="button" data-alt-horizon="short">短期替代</button>
-        <button class="year-btn ${state.alternativeHorizon === "long" ? "active" : ""}" type="button" data-alt-horizon="long">长期替代</button>
-      `;
-
-      els.yearSwitcher.querySelectorAll("[data-alt-horizon]").forEach((button) => {
-        button.addEventListener("click", () => {
-          state.alternativeHorizon = button.dataset.altHorizon;
-          state.alternativeFlowMode = false;
-          state.selectedCountry = null;
-          render();
-        });
-      });
-      return;
-    }
-
-    els.yearSwitcher.innerHTML = "";
-    els.yearSwitcher.classList.add("hidden");
-  }
-
   function buildHeroMetrics(product) {
     if (state.module === "risk") {
       const country = getSelectedCountry(product);
       const riskKey = resolveCountryKey(country, product.risk);
       const risk = riskKey ? product.risk[riskKey] : null;
       const countryLabel = labelCountry(riskKey || country || "该国");
-      const years = ["2022", "2023", "2024"];
+      const selectedYear = ensureRiskYear();
+      const yearLabel = getRiskYearLabel(selectedYear);
+      const metrics = getRiskDtvByYear(risk, selectedYear);
+      const yearCi = getRiskCiByYear(risk, selectedYear);
+      const metricMeta = [
+        { key: "d", short: "D", name: "破坏性", color: "#b93e34" },
+        { key: "t", short: "T", name: "传播性", color: "#d2a543" },
+        { key: "v", short: "V", name: "脆弱性", color: "#1f6b45" },
+      ];
 
-      els.heroMetrics.className = "metric-strip metric-strip--triple";
-      els.heroMetrics.innerHTML = years
-        .map((year) => {
-          const metrics = getRiskDtvByYear(risk, year);
-          return `
-            <article class="metric-card metric-card--risk-year">
-              <div class="metric-label">${countryLabel} ${year}</div>
-              <div class="risk-year-grid">
-                <div class="risk-year-item">
-                  <span>D</span>
-                  <strong>${formatRiskMetric(metrics.d)}</strong>
-                </div>
-                <div class="risk-year-item">
-                  <span>T</span>
-                  <strong>${formatRiskMetric(metrics.t)}</strong>
-                </div>
-                <div class="risk-year-item">
-                  <span>V</span>
-                  <strong>${formatRiskMetric(metrics.v)}</strong>
-                </div>
-              </div>
-              <div class="metric-note">D 破坏性 / T 传播性 / V 脆弱性</div>
-            </article>
-          `;
-        })
-        .join("");
+      els.heroMetrics.className = "metric-strip metric-strip--risk-panel";
+      els.heroMetrics.innerHTML = `
+        <article class="metric-card risk-dtv-panel">
+          <div class="risk-dtv-panel-head">
+            <div class="risk-dtv-panel-title">${countryLabel}<span>${yearLabel} · CI ${formatRiskMetric(yearCi)}</span></div>
+          </div>
+          <div class="risk-dtv-metrics risk-dtv-metrics--row">
+            ${metricMeta
+              .map(
+                (item) => `
+                  <div class="risk-dtv-metric" style="--dtv-color:${item.color};">
+                    <span class="risk-dtv-metric-badge">${item.short}</span>
+                    <div class="risk-dtv-metric-copy">
+                      <strong>${formatRiskMetric(metrics[item.key])}</strong>
+                      <em>${item.name}</em>
+                    </div>
+                  </div>
+                `,
+              )
+              .join("")}
+          </div>
+        </article>
+      `;
       return;
     }
 
     if (state.module === "alternative") {
-      const country = getSelectedCountry(product);
-      const item = getAlternativeSelectedItem(product, country);
-      const topCountries = getAlternativeTopCountries(product);
-      const suggestion = getAlternativeSuggestion(product, item);
-
-      els.heroMetrics.className = "metric-strip";
-      els.heroMetrics.innerHTML = [
-        {
-          label: `${getAlternativeModeLabel()}覆盖国家`,
-          value: `${topCountries.length} 个`,
-          note: `当前界面展示 ${getAlternativeModeLabel()}潜能排名前 10 的国家。`,
-        },
-        {
-          label: `${labelCountry(country || "当前国家")}潜能`,
-          value: item ? item.potential.toFixed(4) : "--",
-          note: item ? `能力分级：${item.tierLabel}` : "当前国家暂无匹配的替代潜能结果。",
-        },
-        {
-          label: "风险等级",
-          value: item ? getAlternativeRiskLabel(product, item.country) : "--",
-          note: "结合前述 CI 风险分级结果进行替代可行性判断。",
-        },
-        {
-          label: "替代建议",
-          value: suggestion.title,
-          note: "当前建议为临时规则版，后续可按你提供的正式分级表替换。",
-        },
-      ]
-        .map(
-          (card) => `
-            <article class="metric-card">
-              <div class="metric-label">${card.label}</div>
-              <div class="metric-value">${card.value}</div>
-              <div class="metric-note">${card.note}</div>
-            </article>
-          `,
-        )
-        .join("");
+      els.heroMetrics.className = "metric-strip metric-strip--alt-note";
+      els.heroMetrics.innerHTML = `
+        <article class="metric-card alt-risk-note-panel">
+          <div class="alt-risk-note-title">风险分级备注</div>
+          <div class="alt-risk-note-copy">
+            在主要供应国断供后，优先保证本国供应，结合某国可供量及风险分级结果来筛选替代国。
+          </div>
+        </article>
+      `;
       return;
     }
 
-    const yearIndex = getOverviewYearIndex(product);
-    const selectedYear = String(state.selectedOverviewYear || product.years.at(yearIndex));
-    const importEntries = Object.entries(product.imports || {});
-    const producerEntries = Object.entries(product.producers || {});
-    const chinaImportTotal = importEntries.reduce((sum, [, info]) => sum + Number(getSeriesValue(info.volume, yearIndex) || 0), 0);
-    const sortedImports = [...importEntries].sort(
-      (a, b) => Number(getSeriesValue(b[1].volume, yearIndex) || 0) - Number(getSeriesValue(a[1].volume, yearIndex) || 0),
-    );
-    const topSupplier = sortedImports[0]?.[0] || product.overview.topSupplier;
-    const topSupplierVolume = Number(getSeriesValue(sortedImports[0]?.[1]?.volume, yearIndex) || 0);
-    const importConcentration = chinaImportTotal ? topSupplierVolume / chinaImportTotal : 0;
-    const totalProduction = producerEntries.reduce((sum, [, info]) => sum + Number(getSeriesValue(info.output, yearIndex) || 0), 0);
-    const externalDependency = Number(getSeriesValue(product.overview.externalDependency, yearIndex));
-
-    const cards = [
-      {
-        label: `${selectedYear}主产国产量`,
-        value: formatMt(totalProduction),
-        note: "按当前选中年份汇总前十大主产国的产量。",
-      },
-      {
-        label: `${selectedYear}中国进口总量`,
-        value: formatMt(chinaImportTotal),
-        note: "按当前选中年份统计中国进口来源总量。",
-      },
-      {
-        label: `${selectedYear}第一来源集中度`,
-        value: formatPct(importConcentration),
-        note: `当前第一来源国：${labelCountry(topSupplier)}`,
-      },
-      {
-        label: `${selectedYear}对外进口依赖度`,
-        value: Number.isFinite(externalDependency) ? `${(externalDependency * 100).toFixed(2)}%` : "--",
-        note: "按净进口量与表观消费量计算该年份的对外进口依赖度。",
-      },
-    ];
-
-    els.heroMetrics.className = "metric-strip";
-    els.heroMetrics.innerHTML = cards
-      .map(
-        (card) => `
-          <article class="metric-card">
-            <div class="metric-label">${card.label}</div>
-            <div class="metric-value">${card.value}</div>
-            <div class="metric-note">${card.note}</div>
-          </article>
-        `,
-      )
-      .join("");
-  }
-
-  function renderRiskSide(product, country) {
-    const riskKey = resolveCountryKey(country, product.risk);
-    const risk = riskKey ? product.risk[riskKey] : null;
-    const riskYears = ["2022", "2023", "2024"];
-
-    els.detailTitle.textContent = labelCountry(country);
-    els.detailBadge.textContent = risk ? riskMeta(risk.level).label : "暂无数据";
-    els.detailBadge.style.background = risk ? `${riskMeta(risk.level).color}22` : "rgba(0,0,0,0.06)";
-
-    els.detailHighlights.innerHTML = risk
-      ? `
-        <article class="detail-chip"><div class="detail-chip-label">CI 2022</div><div class="detail-chip-value">${risk.ci2022.toFixed(4)}</div></article>
-        <article class="detail-chip"><div class="detail-chip-label">CI 2023</div><div class="detail-chip-value">${risk.ci2023.toFixed(4)}</div></article>
-        <article class="detail-chip"><div class="detail-chip-label">CI 2024</div><div class="detail-chip-value">${risk.ci2024.toFixed(4)}</div></article>
-        <article class="detail-chip"><div class="detail-chip-label">三年均值</div><div class="detail-chip-value">${risk.score.toFixed(4)}</div></article>
-      `
-      : "";
-
-    const radarSeries = risk
-      ? riskYears.map((year, index) => {
-          const metrics = getRiskDtvByYear(risk, year);
-          const colors = ["#1f6b45", "#d2a543", "#b93e34"];
-          return {
-            label: year,
-            color: colors[index],
-            values: [metrics.d, metrics.t, metrics.v],
-          };
-        })
-      : [];
-
-    els.chartStack.innerHTML = risk
-      ? `
-        <article class="chart-card">
-          <h4>D / T / V 三维雷达图</h4>
-          <div class="single-chart">
-            <div class="single-chart-title">2022-2024 三年结构对比</div>
-            ${makeRadarChart(radarSeries, { size: 308, radius: 96, maxValue: 3 })}
-          </div>
-        </article>
-        <article class="chart-card">
-          <h4>CI 风险解读</h4>
-          <div class="single-chart risk-level-card risk-level-card--stacked">
-            <div class="risk-level-value" style="color:${riskMeta(risk.level).color};">${riskMeta(risk.level).label}</div>
-            <p class="chart-caption">雷达图展示该国 2022-2024 年 D 破坏性、T 传播性、V 脆弱性的结构变化，便于对比不同年份的风险构成。</p>
-            <p class="chart-caption">CI 2022-2024：${risk.ci2022.toFixed(4)} / ${risk.ci2023.toFixed(4)} / ${risk.ci2024.toFixed(4)}</p>
-          </div>
-        </article>
-      `
-      : `<article class="chart-card"><h4>暂无风险数据</h4><p class="chart-caption">请在地图中选择具有风险分级结果的国家。</p></article>`;
-  }
-
-  function renderRiskSide(product, country) {
-    const riskKey = resolveCountryKey(country, product.risk);
-    const risk = riskKey ? product.risk[riskKey] : null;
-    const riskYears = ["2022", "2023", "2024"];
-    els.chartStack.className = "chart-stack chart-stack--risk-compact";
-
-    els.detailTitle.textContent = labelCountry(country);
-    els.detailBadge.textContent = risk ? riskMeta(risk.level).label : "暂无数据";
-    els.detailBadge.style.background = risk ? `${riskMeta(risk.level).color}22` : "rgba(0,0,0,0.06)";
-
-    els.detailHighlights.innerHTML = risk
-      ? `
-        <article class="detail-chip"><div class="detail-chip-label">CI 2022</div><div class="detail-chip-value">${risk.ci2022.toFixed(4)}</div></article>
-        <article class="detail-chip"><div class="detail-chip-label">CI 2023</div><div class="detail-chip-value">${risk.ci2023.toFixed(4)}</div></article>
-        <article class="detail-chip"><div class="detail-chip-label">CI 2024</div><div class="detail-chip-value">${risk.ci2024.toFixed(4)}</div></article>
-        <article class="detail-chip"><div class="detail-chip-label">三年均值</div><div class="detail-chip-value">${risk.score.toFixed(4)}</div></article>
-      `
-      : "";
-
-    const radarSeries = risk
-      ? riskYears.map((year, index) => {
-          const metrics = getRiskDtvByYear(risk, year);
-          const colors = ["#1f6b45", "#d2a543", "#b93e34"];
-          return {
-            label: year,
-            color: colors[index],
-            values: [metrics.d, metrics.t, metrics.v],
-          };
-        })
-      : [];
-
-    els.chartStack.innerHTML = risk
-      ? `
-        <article class="chart-card chart-card--risk-radar">
-          <h4>D / T / V 三维雷达图</h4>
-          <div class="single-chart single-chart--risk-radar">
-            <div class="single-chart-title">2022-2024 三年结构对比</div>
-            ${makeRadarChart(radarSeries, { size: 244, radius: 68, maxValue: 3 })}
-          </div>
-        </article>
-        <article class="chart-card chart-card--risk-note">
-          <h4>CI 风险解读</h4>
-          <div class="single-chart risk-level-card risk-level-card--stacked">
-            <div class="risk-level-value" style="color:${riskMeta(risk.level).color};">${riskMeta(risk.level).label}</div>
-            <p class="chart-caption">雷达图展示该国 2022-2024 年 D 破坏性、T 传播性、V 脆弱性的结构变化，便于比较不同年份的风险构成。</p>
-            <p class="chart-caption">CI 2022-2024：${risk.ci2022.toFixed(4)} / ${risk.ci2023.toFixed(4)} / ${risk.ci2024.toFixed(4)}</p>
-          </div>
-        </article>
-      `
-      : `<article class="chart-card"><h4>暂无风险数据</h4><p class="chart-caption">请在地图中选择具有风险分级结果的国家。</p></article>`;
-  }
-
-  function renderRiskSide(product, country) {
-    const riskKey = resolveCountryKey(country, product.risk);
-    const risk = riskKey ? product.risk[riskKey] : null;
-    const riskYears = ["2022", "2023", "2024"];
-    const yearColors = {
-      "2022": "#5f8b65",
-      "2023": "#d2a543",
-      "2024": "#1f6b45",
-    };
-
-    els.chartStack.className = "chart-stack chart-stack--risk-compact";
-
-    els.detailTitle.textContent = labelCountry(country);
-    els.detailBadge.textContent = risk ? riskMeta(risk.level).label : "暂无数据";
-    els.detailBadge.style.background = risk ? `${riskMeta(risk.level).color}22` : "rgba(0,0,0,0.06)";
-
-    els.detailHighlights.innerHTML = risk
-      ? `
-        <article class="detail-chip"><div class="detail-chip-label">CI 2022</div><div class="detail-chip-value">${risk.ci2022.toFixed(4)}</div></article>
-        <article class="detail-chip"><div class="detail-chip-label">CI 2023</div><div class="detail-chip-value">${risk.ci2023.toFixed(4)}</div></article>
-        <article class="detail-chip"><div class="detail-chip-label">CI 2024</div><div class="detail-chip-value">${risk.ci2024.toFixed(4)}</div></article>
-        <article class="detail-chip"><div class="detail-chip-label">三年均值</div><div class="detail-chip-value">${risk.score.toFixed(4)}</div></article>
-      `
-      : "";
-
-    const selectedYear = risk && riskYears.includes(String(state.selectedRiskRadarYear))
-      ? String(state.selectedRiskRadarYear)
-      : "2024";
-    state.selectedRiskRadarYear = selectedYear;
-
-    const selectedMetrics = risk ? getRiskDtvByYear(risk, selectedYear) : null;
-    const selectedSeries = risk
-      ? [
-          {
-            label: `${selectedYear}年`,
-            color: yearColors[selectedYear] || "#1f6b45",
-            values: [selectedMetrics.d, selectedMetrics.t, selectedMetrics.v],
-          },
-        ]
-      : [];
-
-    els.chartStack.innerHTML = risk
-      ? `
-        <article class="chart-card chart-card--risk-radar">
-          <h4>D / T / V 三维雷达图</h4>
-          <div class="single-chart single-chart--risk-radar">
-            <div class="risk-radar-switch" style="--active-index:${riskYears.indexOf(selectedYear)};">
-              <span class="risk-radar-switch-thumb" aria-hidden="true"></span>
-              ${riskYears
-                .map(
-                  (year) => `
-                    <button
-                      class="risk-radar-switch-option ${year === selectedYear ? "is-active" : ""}"
-                      type="button"
-                      data-risk-radar-year="${year}"
-                      aria-pressed="${year === selectedYear}"
-                    >
-                      ${year}
-                    </button>
-                  `,
-                )
-                .join("")}
-            </div>
-            <div class="single-chart-title">${selectedYear} 年 D / T / V 结构</div>
-            ${makeRadarChart(selectedSeries, { size: 236, radius: 70, maxValue: 3, showLegend: false, showPoints: false })}
-          </div>
-        </article>
-        <article class="chart-card chart-card--risk-note">
-          <h4>CI 风险解读</h4>
-          <div class="single-chart risk-level-card risk-level-card--stacked">
-            <div class="risk-level-value" style="color:${riskMeta(risk.level).color};">${riskMeta(risk.level).label}</div>
-            <p class="chart-caption">${selectedYear} 年 D / T / V 分别为 ${formatRiskMetric(selectedMetrics.d)} / ${formatRiskMetric(selectedMetrics.t)} / ${formatRiskMetric(selectedMetrics.v)}，用于观察该国当前年份的风险结构重心。</p>
-            <p class="chart-caption">CI 2022-2024：${risk.ci2022.toFixed(4)} / ${risk.ci2023.toFixed(4)} / ${risk.ci2024.toFixed(4)}</p>
-          </div>
-        </article>
-      `
-      : `<article class="chart-card"><h4>暂无风险数据</h4><p class="chart-caption">请在地图中选择具有风险分级结果的国家。</p></article>`;
-
-    els.chartStack.querySelectorAll("[data-risk-radar-year]").forEach((button) => {
-      button.addEventListener("click", () => {
-        const nextYear = button.dataset.riskRadarYear;
-        if (!nextYear || nextYear === state.selectedRiskRadarYear) return;
-        state.selectedRiskRadarYear = nextYear;
-        renderRiskSide(product, country);
-        initChartInteractions();
-        hideChartTooltip();
-      });
-    });
+    els.heroMetrics.classList.remove("hidden");
+    els.heroMetrics.className = "metric-strip hidden";
+    els.heroMetrics.innerHTML = "";
   }
 
   function renderRiskSide(product, country) {
@@ -4959,7 +2906,7 @@
   }
 
   function closeOverviewYearDropdown() {
-    els.yearSwitcher.querySelectorAll(".year-select-wrap").forEach((wrap) => {
+    document.querySelectorAll(".year-select-wrap").forEach((wrap) => {
       wrap.classList.remove("is-open");
       wrap.querySelector(".year-select-trigger")?.setAttribute("aria-expanded", "false");
     });
@@ -4970,7 +2917,8 @@
     document.body.dataset.yearDropdownBound = "1";
 
     document.addEventListener("pointerdown", (event) => {
-      if (!els.yearSwitcher.contains(event.target)) closeOverviewYearDropdown();
+      if (event.target.closest(".year-select-wrap")) return;
+      closeOverviewYearDropdown();
     });
 
     document.addEventListener("keydown", (event) => {
@@ -4979,65 +2927,6 @@
   }
 
   function renderYearSwitcher(product) {
-    if (state.module === "overview") {
-      const years = getRecentOverviewYears(product);
-      ensureOverviewYear(product);
-      ensureOverviewYearDropdownDismiss();
-      els.yearSwitcher.classList.remove("hidden");
-      els.yearSwitcher.innerHTML = `
-        <div class="year-select-wrap" data-year-dropdown>
-          <span class="year-select-label">年份</span>
-          <button
-            class="year-select-trigger"
-            type="button"
-            aria-haspopup="listbox"
-            aria-expanded="false"
-            aria-label="选择年份"
-          >
-            <span class="year-select-value">${state.selectedOverviewYear}年</span>
-          </button>
-          <div class="year-select-menu" role="listbox" aria-label="年份选项">
-            ${years
-              .map(
-                (year) => `
-                  <button
-                    class="year-select-option ${String(year) === String(state.selectedOverviewYear) ? "is-active" : ""}"
-                    type="button"
-                    role="option"
-                    aria-selected="${String(year) === String(state.selectedOverviewYear)}"
-                    data-year-option="${year}"
-                  >
-                    ${year}年
-                  </button>
-                `,
-              )
-              .join("")}
-          </div>
-        </div>
-      `;
-
-      const wrap = els.yearSwitcher.querySelector("[data-year-dropdown]");
-      const trigger = els.yearSwitcher.querySelector(".year-select-trigger");
-
-      trigger?.addEventListener("click", (event) => {
-        event.stopPropagation();
-        const willOpen = !wrap.classList.contains("is-open");
-        closeOverviewYearDropdown();
-        wrap.classList.toggle("is-open", willOpen);
-        trigger.setAttribute("aria-expanded", willOpen ? "true" : "false");
-      });
-
-      els.yearSwitcher.querySelectorAll("[data-year-option]").forEach((button) => {
-        button.addEventListener("click", () => {
-          state.selectedOverviewYear = button.dataset.yearOption;
-          state.selectedCountry = null;
-          closeOverviewYearDropdown();
-          render();
-        });
-      });
-      return;
-    }
-
     if (state.module === "risk") {
       const years = getRiskYears();
       const selectedYear = ensureRiskYear();
@@ -5189,7 +3078,7 @@
     renderLegend(legend);
     els.mapKicker.textContent = kicker;
     els.mapTitle.textContent = title;
-    renderMapDefinition();
+
     els.mapCaption.textContent = caption || "";
     els.mapCaption.classList.toggle("hidden", !caption);
     els.mapPanel?.classList.toggle("map-panel--risk", state.module === "risk");
@@ -5202,6 +3091,10 @@
     }
 
     state.selectedCountry = getSelectedCountry(product);
+    const activeCountry =
+      state.module === "alternative" && state.alternativeFlowMode && state.alternativeDisruptionCountry
+        ? state.alternativeDisruptionCountry
+        : state.selectedCountry;
     drawMapBackdrop();
 
     state.geoJson.features.forEach((feature, index) => {
@@ -5226,7 +3119,11 @@
       node.style.setProperty("--country-delay", `${Math.min(index, 36) * 14}ms`);
       node.style.setProperty("--map-final-opacity", finalOpacity);
 
-      if (!isHiddenCountry && matchedKey && normalizeCountryName(matchedKey) === normalizeCountryName(state.selectedCountry)) {
+      if (
+        !isHiddenCountry &&
+        activeCountry &&
+        normalizeCountryName(matchedKey || mapName) === normalizeCountryName(activeCountry)
+      ) {
         node.classList.add("is-active");
       }
 
@@ -5260,67 +3157,6 @@
     applyMapViewport();
   }
 
-  // In the alternative module, geography communicates CI risk while the
-  // tooltip and side panel continue to communicate replacement potential.
-  const buildHeroMetricsWithMapCards = buildHeroMetrics;
-  buildHeroMetrics = function buildHeroMetricsByModule(product) {
-    if (state.module === "risk") {
-      const country = getSelectedCountry(product);
-      const riskKey = resolveCountryKey(country, product.risk);
-      const risk = riskKey ? product.risk[riskKey] : null;
-      const countryLabel = labelCountry(riskKey || country || "该国");
-      const selectedYear = ensureRiskYear();
-      const yearLabel = getRiskYearLabel(selectedYear);
-      const metrics = getRiskDtvByYear(risk, selectedYear);
-      const yearCi = getRiskCiByYear(risk, selectedYear);
-      const metricMeta = [
-        { key: "d", short: "D", name: "破坏性", color: "#b93e34" },
-        { key: "t", short: "T", name: "传播性", color: "#d2a543" },
-        { key: "v", short: "V", name: "脆弱性", color: "#1f6b45" },
-      ];
-
-      els.heroMetrics.className = "metric-strip metric-strip--risk-panel";
-      els.heroMetrics.innerHTML = `
-        <article class="metric-card risk-dtv-panel">
-          <div class="risk-dtv-panel-head">
-            <div class="risk-dtv-panel-title">${countryLabel}<span>${yearLabel} · CI ${formatRiskMetric(yearCi)}</span></div>
-          </div>
-          <div class="risk-dtv-metrics risk-dtv-metrics--row">
-            ${metricMeta
-              .map(
-                (item) => `
-                  <div class="risk-dtv-metric" style="--dtv-color:${item.color};">
-                    <span class="risk-dtv-metric-badge">${item.short}</span>
-                    <div class="risk-dtv-metric-copy">
-                      <strong>${formatRiskMetric(metrics[item.key])}</strong>
-                      <em>${item.name}</em>
-                    </div>
-                  </div>
-                `,
-              )
-              .join("")}
-          </div>
-        </article>
-      `;
-      return;
-    }
-
-    if (state.module === "alternative") {
-      els.heroMetrics.className = "metric-strip metric-strip--alt-note";
-      els.heroMetrics.innerHTML = `
-        <article class="metric-card alt-risk-note-panel">
-          <div class="alt-risk-note-title">风险分级备注</div>
-          <div class="alt-risk-note-copy">
-            在主要供应国断供后，优先保证本国供应，结合某国可供量及风险分级结果来筛选替代国。
-          </div>
-        </article>
-      `;
-      return;
-    }
-
-    els.heroMetrics.classList.remove("hidden");
-    buildHeroMetricsWithMapCards(product);
-  };
 
   const getModuleCountryStylesWithPotentialColors = getModuleCountryStyles;
 
@@ -5360,7 +3196,7 @@
 
     const flowScenario = state.alternativeFlowMode ? getSelectedReplacementFlow(product) : null;
     if (flowScenario) {
-      config.hiddenCountries = [flowScenario.country];
+      config.hiddenCountries = [];
       config.replacementArrows = flowScenario.replacements.map((replacement) => ({
         from: flowScenario.country,
         to: replacement.country,
@@ -5380,13 +3216,1294 @@
     return config;
   };
 
+  function formatWanTons(mtValue) {
+    const value = Number(mtValue) * 100;
+    if (!Number.isFinite(value)) return "--";
+    return value.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function formatWanHa(mhValue) {
+    const value = Number(mhValue) * 100;
+    if (!Number.isFinite(value)) return "--";
+    return value.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function formatYieldValue(value) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return "--";
+    return num.toFixed(2);
+  }
+
+  function getProductionColor(ratio) {
+    const stops = [
+      [0, [216, 234, 223]],
+      [0.35, [143, 188, 155]],
+      [0.7, [63, 143, 92]],
+      [1, [20, 85, 54]],
+    ];
+    const t = Math.min(1, Math.max(0, Number(ratio) || 0));
+    let left = stops[0];
+    let right = stops[stops.length - 1];
+    for (let index = 0; index < stops.length - 1; index += 1) {
+      if (t >= stops[index][0] && t <= stops[index + 1][0]) {
+        left = stops[index];
+        right = stops[index + 1];
+        break;
+      }
+    }
+    const local = (t - left[0]) / Math.max(0.0001, right[0] - left[0]);
+    const mix = left[1].map((channel, index) => Math.round(channel + (right[1][index] - channel) * local));
+    return `rgb(${mix[0]}, ${mix[1]}, ${mix[2]})`;
+  }
+
+  function getHeatmapRankColor(rank) {
+    const value = Number(rank);
+    if (!Number.isFinite(value) || value <= 0) return "";
+    if (value <= 3) return "#1f6b45";
+    if (value <= 6) return "#5f8b65";
+    return "#d2a543";
+  }
+
+  function getProductionTopCountries(product, yearIndex = getOverviewYearIndex(product)) {
+    return Object.entries(product.producers || {})
+      .map(([country, info]) => {
+        const output = Number(getSeriesValue(info.output, yearIndex));
+        const rankRaw = Number(getSeriesValue(info.rank, yearIndex));
+        return {
+          country,
+          output: Number.isFinite(output) ? output : null,
+          area: Number(getSeriesValue(info.area, yearIndex)),
+          yield: Number(getSeriesValue(info.yield, yearIndex)),
+          rank: Number.isFinite(rankRaw) && rankRaw > 0 && rankRaw <= 10 ? rankRaw : null,
+        };
+      })
+      .filter((item) => item.output !== null && item.output > 0 && item.rank)
+      .sort((a, b) => a.rank - b.rank)
+      .slice(0, 10);
+  }
+
+  function getProductionHeatmapCountries(product) {
+    const scored = Object.entries(product.producers || {}).map(([country, info]) => {
+      const bestRank = Math.min(
+        ...((info.rank || []).map(Number).filter((rank) => Number.isFinite(rank) && rank > 0 && rank <= 10).concat([999])),
+      );
+      const latestOutput = Number(getSeriesValue(info.output, product.years.length - 1) || 0);
+      return { country, bestRank, latestOutput };
+    });
+    return scored
+      .filter((item) => item.bestRank <= 10)
+      .sort((a, b) => a.bestRank - b.bestRank || b.latestOutput - a.latestOutput)
+      .map((item) => item.country);
+  }
+
+  function syncDashboardLayout() {
+    const isProduction = state.module === "production";
+    const isTrade = state.module === "trade";
+    els.capacityDashboard?.classList.toggle("hidden", !isProduction);
+    els.tradeDashboard?.classList.toggle("hidden", !isTrade);
+    els.dashboardGrid?.classList.toggle("hidden", isProduction || isTrade);
+    els.dashboardView?.classList.toggle("dashboard-view--capacity", isProduction);
+    els.dashboardView?.classList.toggle("dashboard-view--trade", isTrade);
+  }
+
+  function applyCapacityMapViewport() {
+    if (!els.capacityWorldMap) return;
+    const viewport = clampMapViewport(state.capacityMapViewport);
+    state.capacityMapViewport = viewport;
+    els.capacityWorldMap.setAttribute("viewBox", `${viewport.x} ${viewport.y} ${viewport.width} ${viewport.height}`);
+    const isZoomed = viewport.width < 999.5;
+    els.capacityMapStage?.closest(".capacity-map-panel")?.classList.toggle("is-map-zoomed", isZoomed);
+  }
+
+  function resetCapacityMapViewport() {
+    state.capacityMapViewport = { x: 0, y: 0, width: 1000, height: 520 };
+    applyCapacityMapViewport();
+  }
+
+  function zoomCapacityMap(scaleFactor, originRatioX = 0.5, originRatioY = 0.5) {
+    const current = clampMapViewport(state.capacityMapViewport);
+    const nextWidth = current.width / scaleFactor;
+    const nextHeight = nextWidth * 0.52;
+    const originX = current.x + current.width * originRatioX;
+    const originY = current.y + current.height * originRatioY;
+    state.capacityMapViewport = clampMapViewport({
+      x: originX - nextWidth * originRatioX,
+      y: originY - nextHeight * originRatioY,
+      width: nextWidth,
+      height: nextHeight,
+    });
+    applyCapacityMapViewport();
+  }
+
+  function initCapacityMapInteractions() {
+    if (!els.capacityWorldMap || els.capacityWorldMap.dataset.bound === "1") return;
+    els.capacityWorldMap.dataset.bound = "1";
+
+    els.capacityMapZoomIn?.addEventListener("click", () => zoomCapacityMap(1.22));
+    els.capacityMapZoomOut?.addEventListener("click", () => zoomCapacityMap(1 / 1.22));
+    els.capacityMapResetView?.addEventListener("click", () => resetCapacityMapViewport());
+
+    els.capacityWorldMap.addEventListener(
+      "wheel",
+      (event) => {
+        event.preventDefault();
+        const rect = els.capacityWorldMap.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        const originRatioX = (event.clientX - rect.left) / rect.width;
+        const originRatioY = (event.clientY - rect.top) / rect.height;
+        zoomCapacityMap(event.deltaY < 0 ? 1.1 : 1 / 1.1, originRatioX, originRatioY);
+      },
+      { passive: false },
+    );
+
+    els.capacityWorldMap.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      els.capacityMapTooltip?.classList.add("hidden");
+      state.capacityMapDrag = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        viewport: { ...state.capacityMapViewport },
+        moved: false,
+      };
+    });
+
+    els.capacityWorldMap.addEventListener("pointermove", (event) => {
+      if (!state.capacityMapDrag || state.capacityMapDrag.pointerId !== event.pointerId) return;
+      const rect = els.capacityWorldMap.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const dx = event.clientX - state.capacityMapDrag.startX;
+      const dy = event.clientY - state.capacityMapDrag.startY;
+      if (!state.capacityMapDrag.moved && Math.hypot(dx, dy) > 4) {
+        state.capacityMapDrag.moved = true;
+        els.capacityWorldMap.setPointerCapture?.(event.pointerId);
+        els.capacityMapStage?.classList.add("is-dragging");
+      }
+      if (!state.capacityMapDrag.moved) return;
+      state.capacityMapViewport = clampMapViewport({
+        x: state.capacityMapDrag.viewport.x - (dx / rect.width) * state.capacityMapDrag.viewport.width,
+        y: state.capacityMapDrag.viewport.y - (dy / rect.height) * state.capacityMapDrag.viewport.height,
+        width: state.capacityMapDrag.viewport.width,
+        height: state.capacityMapDrag.viewport.height,
+      });
+      applyCapacityMapViewport();
+    });
+
+    const finishDrag = (event) => {
+      if (!state.capacityMapDrag || (event?.pointerId && state.capacityMapDrag.pointerId !== event.pointerId)) return;
+      if (state.capacityMapDrag.moved) state.suppressCapacityMapClickUntil = Date.now() + 220;
+      els.capacityMapStage?.classList.remove("is-dragging");
+      state.capacityMapDrag = null;
+    };
+
+    els.capacityWorldMap.addEventListener("pointerup", finishDrag);
+    els.capacityWorldMap.addEventListener("pointercancel", finishDrag);
+    els.capacityWorldMap.addEventListener("pointerleave", (event) => {
+      if (state.capacityMapDrag?.pointerId === event.pointerId) finishDrag(event);
+    });
+  }
+
+  function renderCapacityFilters(product) {
+    ensureOverviewYear(product);
+    ensureOverviewYearDropdownDismiss();
+    if (!els.capacityFilters) return;
+
+    els.capacityFilters.classList.remove("hidden");
+    els.capacityFilters.innerHTML = `
+      <div class="year-select-wrap" data-capacity-year-dropdown>
+        <span class="year-select-label">年份</span>
+        <button
+          class="year-select-trigger"
+          type="button"
+          aria-haspopup="listbox"
+          aria-expanded="false"
+          aria-label="选择年份"
+        >
+          <span class="year-select-value">${state.selectedOverviewYear}年</span>
+        </button>
+        <div class="year-select-menu" role="listbox" aria-label="年份选项">
+          ${product.years
+            .map(
+              (year) => `
+                <button
+                  class="year-select-option ${String(year) === String(state.selectedOverviewYear) ? "is-active" : ""}"
+                  type="button"
+                  role="option"
+                  aria-selected="${String(year) === String(state.selectedOverviewYear)}"
+                  data-capacity-year="${year}"
+                >
+                  ${year}年
+                </button>
+              `,
+            )
+            .join("")}
+        </div>
+      </div>
+    `;
+
+    const wrap = els.capacityFilters.querySelector("[data-capacity-year-dropdown]");
+    const trigger = els.capacityFilters.querySelector(".year-select-trigger");
+    trigger?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const willOpen = !wrap.classList.contains("is-open");
+      closeOverviewYearDropdown();
+      wrap.classList.toggle("is-open", willOpen);
+      trigger.setAttribute("aria-expanded", willOpen ? "true" : "false");
+    });
+
+    els.capacityFilters.querySelectorAll("[data-capacity-year]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.selectedOverviewYear = button.dataset.capacityYear;
+        state.selectedCountry = null;
+        closeOverviewYearDropdown();
+        render();
+      });
+    });
+  }
+
+  function renderCapacityDependency(product) {
+    const yearIndex = getOverviewYearIndex(product);
+    const selectedYear = String(state.selectedOverviewYear || product.years.at(yearIndex));
+    const dependency = Number(getSeriesValue(product.overview.externalDependency, yearIndex));
+    if (els.capacityDependencyLabel) {
+      els.capacityDependencyLabel.textContent = `对外进口依赖度（${selectedYear}年）`;
+    }
+    if (els.capacityDependencyValue) {
+      els.capacityDependencyValue.textContent = Number.isFinite(dependency)
+        ? `${(dependency * 100).toFixed(2)}%`
+        : "--";
+    }
+  }
+
+  function renderCapacityRankTable(product, topCountries) {
+    const selectedYear = String(state.selectedOverviewYear || product.years.at(-1));
+    if (els.capacityRankTitle) els.capacityRankTitle.textContent = `${selectedYear}年前十大主产国`;
+    if (!els.capacityRankBody) return;
+
+    els.capacityRankBody.innerHTML = topCountries
+      .map((item) => {
+        const active = normalizeCountryName(item.country) === normalizeCountryName(state.selectedCountry);
+        return `
+          <tr class="${active ? "is-active" : ""}" data-capacity-country="${item.country}">
+            <td><span class="capacity-rank-index">${item.rank}</span></td>
+            <td>${labelCountry(item.country)}</td>
+            <td>${formatWanTons(item.output)}</td>
+            <td>${formatYieldValue(item.yield)}</td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    els.capacityRankBody.querySelectorAll("[data-capacity-country]").forEach((row) => {
+      row.addEventListener("click", () => {
+        state.selectedCountry = row.dataset.capacityCountry;
+        render();
+      });
+    });
+  }
+
+  function renderCapacityDetail(product, country, topCountries) {
+    const yearIndex = getOverviewYearIndex(product);
+    const selectedYear = String(state.selectedOverviewYear || product.years.at(yearIndex));
+    const producerKey = resolveCountryKey(country, product.producers);
+    const producer = producerKey ? product.producers[producerKey] : null;
+    const ranked = topCountries.find((item) => normalizeCountryName(item.country) === normalizeCountryName(country));
+
+    if (els.capacityDetailTitle) els.capacityDetailTitle.textContent = labelCountry(country || "请选择国家");
+    if (els.capacityDetailBadge) {
+      els.capacityDetailBadge.textContent = ranked ? `${selectedYear}年排名第${ranked.rank}` : "待选择";
+      els.capacityDetailBadge.style.background = ranked ? "rgba(31, 107, 69, 0.12)" : "rgba(0,0,0,0.06)";
+    }
+    if (els.capacityBasicTitle) els.capacityBasicTitle.textContent = `基本信息（${selectedYear}年）`;
+    if (els.capacityTrendTitle) {
+      els.capacityTrendTitle.textContent = `${labelCountry(country || "该国")}${getProductMeta(product.id).name}产能变化（2005-2024年）`;
+    }
+
+    if (!producer || !els.capacityBasicList) {
+      if (els.capacityBasicList) els.capacityBasicList.innerHTML = "";
+      if (els.capacityTrendStack) els.capacityTrendStack.innerHTML = "";
+      return;
+    }
+
+    const output = getSeriesValue(producer.output, yearIndex);
+    const area = getSeriesValue(producer.area, yearIndex);
+    const yieldValue = getSeriesValue(producer.yield, yearIndex);
+
+    els.capacityBasicList.innerHTML = `
+      <div class="capacity-basic-row"><span>产量</span><strong>${formatWanTons(output)} 万吨</strong></div>
+      <div class="capacity-basic-row"><span>收获面积</span><strong>${formatWanHa(area)} 万公顷</strong></div>
+      <div class="capacity-basic-row"><span>单产</span><strong>${formatYieldValue(yieldValue)} 吨/公顷</strong></div>
+      <div class="capacity-basic-row"><span>当年排名</span><strong>第 ${ranked?.rank || "--"} 名</strong></div>
+    `;
+
+    const chartOutput = (producer.output || []).map((value) => (value === null || value === undefined ? null : Number(value) * 100));
+    const chartArea = (producer.area || []).map((value) => (value === null || value === undefined ? null : Number(value) * 100));
+
+    els.capacityTrendStack.innerHTML = `
+      <article class="capacity-trend-card">
+        <div class="capacity-trend-head"><span>产量变化（万吨）</span></div>
+        ${makeLineChart(chartOutput, product.years, "#1f6b45", { compact: true, showAllYears: true, format: "wantons", label: "产量" })}
+      </article>
+      <article class="capacity-trend-card">
+        <div class="capacity-trend-head"><span>面积变化（万公顷）</span></div>
+        ${makeLineChart(chartArea, product.years, "#3f8f5c", { compact: true, showAllYears: true, format: "area", label: "面积" })}
+      </article>
+      <article class="capacity-trend-card">
+        <div class="capacity-trend-head"><span>单产变化（吨/公顷）</span></div>
+        ${makeLineChart(producer.yield, product.years, "#7a5ea8", { compact: true, showAllYears: true, format: "yield", label: "单产" })}
+      </article>
+    `;
+    enhanceCapacityTrendCards();
+  }
+
+  function renderCapacityHeatmap(product) {
+    const meta = getProductMeta(product.id);
+    if (els.capacityHeatmapTitle) {
+      els.capacityHeatmapTitle.textContent = `${meta.name}主要主产国历年产量排名变化（2005—2024年）`;
+    }
+    if (els.capacityHeatmapLegend) {
+      els.capacityHeatmapLegend.innerHTML = `
+        <span class="capacity-heat-legend-item"><i style="background:#1f6b45"></i>1-3名</span>
+        <span class="capacity-heat-legend-item"><i style="background:#5f8b65"></i>4-6名</span>
+        <span class="capacity-heat-legend-item"><i style="background:#d2a543"></i>7-10名</span>
+      `;
+    }
+    if (!els.capacityHeatmapWrap) return;
+
+    const countries = getProductionHeatmapCountries(product);
+    const years = product.years || [];
+    els.capacityHeatmapWrap.innerHTML = `
+      <table class="capacity-heatmap-table">
+        <thead>
+          <tr>
+            <th>国家</th>
+            ${years.map((year) => `<th>${year}</th>`).join("")}
+          </tr>
+        </thead>
+        <tbody>
+          ${countries
+            .map((country) => {
+              const info = product.producers[country] || {};
+              return `
+                <tr>
+                  <th>${labelCountry(country)}</th>
+                  ${years
+                    .map((_, index) => {
+                      const rank = Number(getSeriesValue(info.rank, index));
+                      if (!Number.isFinite(rank) || rank <= 0 || rank > 10) return `<td class="is-empty">-</td>`;
+                      const color = getHeatmapRankColor(rank);
+                      return `<td style="background:${color}33;color:#1d2a33;"><strong>${rank}</strong></td>`;
+                    })
+                    .join("")}
+                </tr>
+              `;
+            })
+            .join("")}
+        </tbody>
+      </table>
+    `;
+  }
+
+  function drawCapacityMap(product, topCountries) {
+    if (!els.capacityWorldMap) return;
+    const selectedYear = String(state.selectedOverviewYear || product.years.at(-1));
+    if (els.capacityMapKicker) els.capacityMapKicker.textContent = "主产国分布";
+    if (els.capacityMapTitle) {
+      els.capacityMapTitle.textContent = `${selectedYear}年世界${getProductMeta(product.id).name}主产国分布（前十国）`;
+    }
+    if (els.capacityMapCaption) {
+      els.capacityMapCaption.textContent = `注：地图颜色深浅表示该国${getProductMeta(product.id).name}产量大小`;
+    }
+
+    els.capacityWorldMap.innerHTML = "";
+    applyCapacityMapViewport();
+
+    if (!state.geoJson) {
+      els.capacityWorldMap.innerHTML = '<text x="500" y="260" text-anchor="middle" fill="#627061" font-size="18">地图数据加载中...</text>';
+      return;
+    }
+
+    const maxOutput = Math.max(...topCountries.map((item) => item.output || 0), 0.0001);
+    const styleMap = Object.fromEntries(
+      topCountries.map((item) => [item.country, { fill: getProductionColor((item.output || 0) / maxOutput), rank: item.rank }]),
+    );
+
+    // backdrop oceans / land fill similar to main map
+    const ocean = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    ocean.setAttribute("x", "0");
+    ocean.setAttribute("y", "0");
+    ocean.setAttribute("width", "1000");
+    ocean.setAttribute("height", "520");
+    ocean.setAttribute("fill", "#eef4f0");
+    els.capacityWorldMap.appendChild(ocean);
+
+    state.geoJson.features.forEach((feature) => {
+      const mapName = feature.properties?.name;
+      const matchedKey = resolveCountryKey(mapName, Object.keys(styleMap));
+      const pathData = geometryToPath(feature.geometry);
+      if (!pathData) return;
+      const node = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      node.setAttribute("d", pathData);
+      node.setAttribute("fill", matchedKey ? styleMap[matchedKey].fill : "#d9e2dc");
+      node.setAttribute("stroke", "rgba(31,107,69,0.18)");
+      node.setAttribute("stroke-width", "0.7");
+      node.setAttribute("class", "country-shape");
+      node.setAttribute("data-country", matchedKey || mapName);
+      if (matchedKey && normalizeCountryName(matchedKey) === normalizeCountryName(state.selectedCountry)) {
+        node.classList.add("is-active");
+        node.setAttribute("stroke", "#1f6b45");
+        node.setAttribute("stroke-width", "1.6");
+      }
+      node.addEventListener("mouseenter", (event) => {
+        const producerKey = resolveCountryKey(mapName, product.producers);
+        const tip = els.capacityMapTooltip;
+        if (!tip) return;
+        const ranked = topCountries.find((item) => normalizeCountryName(item.country) === normalizeCountryName(producerKey || mapName));
+        tip.classList.remove("hidden");
+        tip.innerHTML = `
+          <strong>${labelCountry(producerKey || mapName)}</strong>
+          <div>${ranked ? `排名第 ${ranked.rank}` : "未进入前十"}</div>
+          <div>产量：${ranked ? `${formatWanTons(ranked.output)} 万吨` : "--"}</div>
+        `;
+        const box = els.capacityWorldMap.getBoundingClientRect();
+        tip.style.left = `${event.clientX - box.left + 14}px`;
+        tip.style.top = `${event.clientY - box.top + 14}px`;
+      });
+      node.addEventListener("mousemove", (event) => {
+        const tip = els.capacityMapTooltip;
+        if (!tip || tip.classList.contains("hidden")) return;
+        const box = els.capacityWorldMap.getBoundingClientRect();
+        tip.style.left = `${event.clientX - box.left + 14}px`;
+        tip.style.top = `${event.clientY - box.top + 14}px`;
+      });
+      node.addEventListener("mouseleave", () => els.capacityMapTooltip?.classList.add("hidden"));
+      node.addEventListener("click", () => {
+        if (Date.now() < state.suppressCapacityMapClickUntil) return;
+        const next = resolveCountryKey(mapName, Object.keys(product.producers || {}));
+        if (!next) return;
+        state.selectedCountry = next;
+        render();
+      });
+      els.capacityWorldMap.appendChild(node);
+    });
+
+    topCountries.forEach((item) => {
+      const point = getCountryAnchorPoint(item.country);
+      if (!point) return;
+      const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      group.setAttribute("class", "capacity-rank-marker");
+      group.style.cursor = "pointer";
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("cx", point[0]);
+      circle.setAttribute("cy", point[1]);
+      circle.setAttribute("r", "11");
+      circle.setAttribute("fill", "#1f6b45");
+      circle.setAttribute("stroke", "#ffffff");
+      circle.setAttribute("stroke-width", "2");
+      const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      text.setAttribute("x", point[0]);
+      text.setAttribute("y", point[1] + 4);
+      text.setAttribute("text-anchor", "middle");
+      text.setAttribute("fill", "#ffffff");
+      text.setAttribute("font-size", "11");
+      text.setAttribute("font-weight", "700");
+      text.textContent = String(item.rank);
+      group.appendChild(circle);
+      group.appendChild(text);
+      group.addEventListener("click", () => {
+        state.selectedCountry = item.country;
+        render();
+      });
+      els.capacityWorldMap.appendChild(group);
+    });
+  }
+
+  function getCountryAnchorPoint(countryName) {
+    if (typeof getCountryAnchor === "function") {
+      const anchor = getCountryAnchor(countryName);
+      if (anchor) return anchor;
+    }
+    const coordinateKey = resolveCountryKey(countryName, appData.countryCoordinates || {});
+    if (coordinateKey && Array.isArray(appData.countryCoordinates?.[coordinateKey])) {
+      return appData.countryCoordinates[coordinateKey];
+    }
+    return null;
+  }
+
+  function renderCapacityDashboard(product) {
+    ensureOverviewYear(product);
+    const topCountries = getProductionTopCountries(product);
+    if (!state.selectedCountry || !resolveCountryKey(state.selectedCountry, topCountries.map((item) => item.country))) {
+      state.selectedCountry = topCountries[0]?.country || null;
+    } else {
+      state.selectedCountry = resolveCountryKey(state.selectedCountry, topCountries.map((item) => item.country));
+    }
+
+    renderCapacityFilters(product);
+    renderCapacityDependency(product);
+    drawCapacityMap(product, topCountries);
+    renderCapacityRankTable(product, topCountries);
+    renderCapacityDetail(product, state.selectedCountry, topCountries);
+    renderCapacityHeatmap(product);
+    initChartInteractions();
+    hideChartTooltip();
+  }
+
+  function formatTradeVolume(mtValue) {
+    return formatWanTons(mtValue);
+  }
+
+  function formatTradeValue(value) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return "--";
+    return num.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function formatTradePrice(value) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return "--";
+    return num.toFixed(2);
+  }
+
+  function formatYoy(value) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return { text: "--", className: "" };
+    const sign = num > 0 ? "+" : "";
+    return {
+      text: `${sign}${num.toFixed(2)}%`,
+      className: num > 0 ? "is-up" : num < 0 ? "is-down" : "",
+    };
+  }
+
+  function getTradeOverview(product) {
+    if (product.tradeOverview) return product.tradeOverview;
+
+    const years = product.years || [];
+    const imports = Object.values(product.imports || {});
+    const volume = (product.importTrend || []).map((value) => (
+      value === null || value === undefined ? null : Number(value) * 100
+    ));
+    const value = years.map((_, index) => {
+      const sum = imports.reduce((total, info) => {
+        const item = Number(getSeriesValue(info.value, index));
+        return total + (Number.isFinite(item) ? item : 0);
+      }, 0);
+      return sum > 0 ? Number(sum.toFixed(4)) : null;
+    });
+    const price = years.map((_, index) => {
+      const volMt = Number(getSeriesValue(product.importTrend, index));
+      const val = Number(value[index]);
+      if (!Number.isFinite(volMt) || volMt <= 0 || !Number.isFinite(val)) return null;
+      // 贸易额(百万美元) / 进口量(百万吨) = 美元/吨
+      return Number((val / volMt).toFixed(4));
+    });
+
+    return {
+      volume,
+      value,
+      price,
+      volumeYoy: years.map(() => null),
+      valueYoy: years.map(() => null),
+      priceYoy: years.map(() => null),
+    };
+  }
+
+  function getTradeTopCountries(product, yearIndex = getOverviewYearIndex(product)) {
+    return Object.entries(product.imports || {})
+      .map(([country, info]) => {
+        const volume = Number(getSeriesValue(info.volume, yearIndex));
+        return {
+          country,
+          volume: Number.isFinite(volume) && volume > 0 ? volume : null,
+          value: Number(getSeriesValue(info.value, yearIndex)),
+          price: Number(getSeriesValue(info.price, yearIndex)),
+          concentration: Number(getSeriesValue(info.dependency, yearIndex)),
+        };
+      })
+      .filter((item) => item.volume !== null)
+      .sort((a, b) => b.volume - a.volume)
+      .slice(0, 5)
+      .map((item, index) => ({ ...item, rank: index + 1 }));
+  }
+
+  function makeBarChart(values, years, color, options = {}) {
+    const width = options.width || 320;
+    const height = options.height || 150;
+    const pad = { top: 16, right: 12, bottom: 28, left: 42 };
+    const chartId = `bar-${++chartInstanceId}`;
+    const points = years.map((year, index) => {
+      const raw = values[index];
+      const numeric = Number(raw);
+      return {
+        year,
+        index,
+        value: raw === null || raw === undefined || !Number.isFinite(numeric) ? null : numeric,
+      };
+    }).filter((item) => item.value !== null);
+
+    if (!points.length) {
+      return `<div class="chart-caption">暂无数据</div>`;
+    }
+
+    const axis = buildChartYAxis(points.map((item) => item.value), options.format || "");
+    const innerW = width - pad.left - pad.right;
+    const innerH = height - pad.top - pad.bottom;
+    const barWidth = Math.max(4, Math.min(18, (innerW / Math.max(years.length, 1)) * 0.62));
+
+    const bars = years.map((year, index) => {
+      const raw = values[index];
+      const numeric = Number(raw);
+      if (raw === null || raw === undefined || !Number.isFinite(numeric)) return "";
+      const x = pad.left + (index + 0.5) * (innerW / Math.max(years.length, 1)) - barWidth / 2;
+      const y = pad.top + ((axis.max - numeric) / Math.max(axis.max - axis.min, 0.0001)) * innerH;
+      const h = Math.max(1, pad.top + innerH - y);
+      const label = formatChartValue(numeric, options.format);
+      return `
+        <rect class="trade-bar" x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${barWidth.toFixed(2)}" height="${h.toFixed(2)}" fill="${color}" rx="3"></rect>
+        <rect class="chart-hit-point" data-year="${year}" data-label="${options.label || "数值"}" data-value="${label}" data-index="${index}"
+          x="${(x - 4).toFixed(2)}" y="${pad.top}" width="${(barWidth + 8).toFixed(2)}" height="${innerH}" fill="transparent"></rect>
+      `;
+    }).join("");
+
+    const yTicks = (axis.ticks || []).map((tick) => {
+      const y = pad.top + ((axis.max - tick) / Math.max(axis.max - axis.min, 0.0001)) * innerH;
+      return `
+        <line x1="${pad.left}" y1="${y}" x2="${width - pad.right}" y2="${y}" stroke="rgba(45,79,53,0.08)" stroke-width="1"></line>
+        <text x="${pad.left - 6}" y="${y + 3}" text-anchor="end" fill="#7a877c" font-size="10">${formatChartAxisValue(tick, options.format)}</text>
+      `;
+    }).join("");
+
+    const xLabels = years.map((year, index) => {
+      if (years.length > 12 && index % 4 !== 0 && index !== years.length - 1) return "";
+      const x = pad.left + (index + 0.5) * (innerW / Math.max(years.length, 1));
+      return `<text x="${x.toFixed(2)}" y="${height - 8}" text-anchor="middle" fill="#7a877c" font-size="10">${year}</text>`;
+    }).join("");
+
+    return `
+      <div class="line-chart-wrap" data-chart-id="${chartId}">
+        <svg viewBox="0 0 ${width} ${height}" width="100%" height="${height}" role="img">
+          ${yTicks}
+          ${bars}
+          ${xLabels}
+        </svg>
+      </div>
+    `;
+  }
+
+  function applyTradeMapViewport() {
+    if (!els.tradeWorldMap) return;
+    const viewport = clampMapViewport(state.tradeMapViewport);
+    state.tradeMapViewport = viewport;
+    els.tradeWorldMap.setAttribute("viewBox", `${viewport.x} ${viewport.y} ${viewport.width} ${viewport.height}`);
+    const isZoomed = viewport.width < 999.5;
+    els.tradeMapStage?.closest(".trade-map-panel")?.classList.toggle("is-map-zoomed", isZoomed);
+  }
+
+  function resetTradeMapViewport() {
+    state.tradeMapViewport = { x: 0, y: 0, width: 1000, height: 520 };
+    applyTradeMapViewport();
+  }
+
+  function zoomTradeMap(scaleFactor, originRatioX = 0.5, originRatioY = 0.5) {
+    const current = clampMapViewport(state.tradeMapViewport);
+    const nextWidth = current.width / scaleFactor;
+    const nextHeight = nextWidth * 0.52;
+    const originX = current.x + current.width * originRatioX;
+    const originY = current.y + current.height * originRatioY;
+    state.tradeMapViewport = clampMapViewport({
+      x: originX - nextWidth * originRatioX,
+      y: originY - nextHeight * originRatioY,
+      width: nextWidth,
+      height: nextHeight,
+    });
+    applyTradeMapViewport();
+  }
+
+  function initTradeMapInteractions() {
+    if (!els.tradeWorldMap || els.tradeWorldMap.dataset.bound === "1") return;
+    els.tradeWorldMap.dataset.bound = "1";
+
+    els.tradeMapZoomIn?.addEventListener("click", () => zoomTradeMap(1.22));
+    els.tradeMapZoomOut?.addEventListener("click", () => zoomTradeMap(1 / 1.22));
+    els.tradeMapResetView?.addEventListener("click", () => resetTradeMapViewport());
+
+    els.tradeWorldMap.addEventListener(
+      "wheel",
+      (event) => {
+        event.preventDefault();
+        const rect = els.tradeWorldMap.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        zoomTradeMap(
+          event.deltaY < 0 ? 1.1 : 1 / 1.1,
+          (event.clientX - rect.left) / rect.width,
+          (event.clientY - rect.top) / rect.height,
+        );
+      },
+      { passive: false },
+    );
+
+    els.tradeWorldMap.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      els.tradeMapTooltip?.classList.add("hidden");
+      state.tradeMapDrag = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        viewport: { ...state.tradeMapViewport },
+        moved: false,
+      };
+    });
+
+    els.tradeWorldMap.addEventListener("pointermove", (event) => {
+      if (!state.tradeMapDrag || state.tradeMapDrag.pointerId !== event.pointerId) return;
+      const rect = els.tradeWorldMap.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const dx = event.clientX - state.tradeMapDrag.startX;
+      const dy = event.clientY - state.tradeMapDrag.startY;
+      if (!state.tradeMapDrag.moved && Math.hypot(dx, dy) > 4) {
+        state.tradeMapDrag.moved = true;
+        els.tradeWorldMap.setPointerCapture?.(event.pointerId);
+        els.tradeMapStage?.classList.add("is-dragging");
+      }
+      if (!state.tradeMapDrag.moved) return;
+      state.tradeMapViewport = clampMapViewport({
+        x: state.tradeMapDrag.viewport.x - (dx / rect.width) * state.tradeMapDrag.viewport.width,
+        y: state.tradeMapDrag.viewport.y - (dy / rect.height) * state.tradeMapDrag.viewport.height,
+        width: state.tradeMapDrag.viewport.width,
+        height: state.tradeMapDrag.viewport.height,
+      });
+      applyTradeMapViewport();
+    });
+
+    const finishDrag = (event) => {
+      if (!state.tradeMapDrag || (event?.pointerId && state.tradeMapDrag.pointerId !== event.pointerId)) return;
+      if (state.tradeMapDrag.moved) state.suppressTradeMapClickUntil = Date.now() + 220;
+      els.tradeMapStage?.classList.remove("is-dragging");
+      state.tradeMapDrag = null;
+    };
+
+    els.tradeWorldMap.addEventListener("pointerup", finishDrag);
+    els.tradeWorldMap.addEventListener("pointercancel", finishDrag);
+    els.tradeWorldMap.addEventListener("pointerleave", (event) => {
+      if (state.tradeMapDrag?.pointerId === event.pointerId) finishDrag(event);
+    });
+  }
+
+  function renderTradeFilters(product) {
+    ensureOverviewYear(product);
+    ensureOverviewYearDropdownDismiss();
+    if (!els.tradeFilters) return;
+    els.tradeFilters.classList.remove("hidden");
+    els.tradeFilters.innerHTML = `
+      <div class="year-select-wrap" data-trade-year-dropdown>
+        <span class="year-select-label">年份</span>
+        <button class="year-select-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="选择年份">
+          <span class="year-select-value">${state.selectedOverviewYear}年</span>
+        </button>
+        <div class="year-select-menu" role="listbox" aria-label="年份选项">
+          ${product.years
+            .map(
+              (year) => `
+                <button class="year-select-option ${String(year) === String(state.selectedOverviewYear) ? "is-active" : ""}" type="button" role="option"
+                  aria-selected="${String(year) === String(state.selectedOverviewYear)}" data-trade-year="${year}">${year}年</button>
+              `,
+            )
+            .join("")}
+        </div>
+      </div>
+    `;
+    const wrap = els.tradeFilters.querySelector("[data-trade-year-dropdown]");
+    const trigger = els.tradeFilters.querySelector(".year-select-trigger");
+    trigger?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const willOpen = !wrap.classList.contains("is-open");
+      closeOverviewYearDropdown();
+      wrap.classList.toggle("is-open", willOpen);
+      trigger.setAttribute("aria-expanded", willOpen ? "true" : "false");
+    });
+    els.tradeFilters.querySelectorAll("[data-trade-year]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.selectedOverviewYear = button.dataset.tradeYear;
+        state.selectedCountry = null;
+        closeOverviewYearDropdown();
+        render();
+      });
+    });
+  }
+
+  function renderTradeMetrics(product) {
+    const yearIndex = getOverviewYearIndex(product);
+    const selectedYear = String(state.selectedOverviewYear || product.years.at(yearIndex));
+    const overview = getTradeOverview(product);
+    const volumeRaw = Number(getSeriesValue(overview.volume, yearIndex));
+    const valueRaw = Number(getSeriesValue(overview.value, yearIndex));
+    const priceRaw = Number(getSeriesValue(overview.price, yearIndex));
+    const volumeYoy = formatYoy(getSeriesValue(overview.volumeYoy, yearIndex));
+    const valueYoy = formatYoy(getSeriesValue(overview.valueYoy, yearIndex));
+    const priceYoy = formatYoy(getSeriesValue(overview.priceYoy, yearIndex));
+    if (!els.tradeMetrics) return;
+    els.tradeMetrics.innerHTML = [
+      {
+        label: "总进口量",
+        // tradeOverview.volume 已是万吨
+        value: Number.isFinite(volumeRaw) ? formatTradeValue(volumeRaw) : "--",
+        unit: "万吨",
+        yoy: volumeYoy,
+        note: selectedYear,
+      },
+      {
+        label: "总贸易额",
+        value: Number.isFinite(valueRaw) ? formatTradeValue(valueRaw) : "--",
+        unit: "百万美元",
+        yoy: valueYoy,
+        note: selectedYear,
+      },
+      {
+        label: "加权平均进口价",
+        value: Number.isFinite(priceRaw) ? formatTradePrice(priceRaw) : "--",
+        unit: "美元/吨",
+        yoy: priceYoy,
+        note: selectedYear,
+      },
+    ]
+      .map(
+        (card) => `
+          <article class="trade-metric-card">
+            <div class="trade-metric-label">${card.label}</div>
+            <div class="trade-metric-value-row">
+              <strong>${card.value}</strong>
+              <span>${card.unit}</span>
+            </div>
+            <div class="trade-metric-yoy ${card.yoy.className}">同比 ${card.yoy.text}</div>
+          </article>
+        `,
+      )
+      .join("");
+  }
+
+  function renderTradeRankTable(product, topCountries) {
+    const selectedYear = String(state.selectedOverviewYear || product.years.at(-1));
+    if (els.tradeRankTitle) els.tradeRankTitle.textContent = `${selectedYear}年前五大进口来源国`;
+    if (!els.tradeRankBody) return;
+    els.tradeRankBody.innerHTML = topCountries
+      .map((item) => {
+        const active = normalizeCountryName(item.country) === normalizeCountryName(state.selectedCountry);
+        const concentration = Number.isFinite(item.concentration) ? `${(item.concentration * 100).toFixed(2)}%` : "--";
+        return `
+          <tr class="${active ? "is-active" : ""}" data-trade-country="${item.country}">
+            <td><span class="capacity-rank-index">${item.rank}</span></td>
+            <td>${labelCountry(item.country)}</td>
+            <td>${formatTradeVolume(item.volume)}</td>
+            <td>${concentration}</td>
+          </tr>
+        `;
+      })
+      .join("");
+    els.tradeRankBody.querySelectorAll("[data-trade-country]").forEach((row) => {
+      row.addEventListener("click", () => {
+        state.selectedCountry = row.dataset.tradeCountry;
+        render();
+      });
+    });
+  }
+
+  function renderTradeDetail(product, country, topCountries) {
+    const yearIndex = getOverviewYearIndex(product);
+    const selectedYear = String(state.selectedOverviewYear || product.years.at(yearIndex));
+    const importKey = resolveCountryKey(country, product.imports);
+    const importer = importKey ? product.imports[importKey] : null;
+    const ranked = topCountries.find((item) => normalizeCountryName(item.country) === normalizeCountryName(country));
+
+    if (els.tradeDetailTitle) els.tradeDetailTitle.textContent = labelCountry(country || "请选择国家");
+    if (els.tradeDetailBadge) {
+      els.tradeDetailBadge.textContent = ranked ? `${selectedYear}年排名第${ranked.rank}` : "待选择";
+      els.tradeDetailBadge.style.background = ranked ? "rgba(31, 107, 69, 0.12)" : "rgba(0,0,0,0.06)";
+    }
+    if (els.tradeBasicTitle) els.tradeBasicTitle.textContent = `${selectedYear}年数据概览`;
+    if (els.tradeTrendTitle) {
+      els.tradeTrendTitle.textContent = `自${labelCountry(country || "该国")}进口变化（2005-2024年）`;
+    }
+
+    if (!importer || !els.tradeBasicList) {
+      if (els.tradeBasicList) els.tradeBasicList.innerHTML = "";
+      if (els.tradeTrendStack) els.tradeTrendStack.innerHTML = "";
+      return;
+    }
+
+    const volume = getSeriesValue(importer.volume, yearIndex);
+    const value = getSeriesValue(importer.value, yearIndex);
+    const concentration = getSeriesValue(importer.dependency, yearIndex);
+    els.tradeBasicList.innerHTML = `
+      <div class="capacity-basic-row"><span>进口量</span><strong>${formatTradeVolume(volume)} 万吨</strong></div>
+      <div class="capacity-basic-row"><span>贸易额</span><strong>${formatTradeValue(value)} 百万美元</strong></div>
+      <div class="capacity-basic-row"><span>集中度</span><strong>${Number.isFinite(Number(concentration)) ? `${(Number(concentration) * 100).toFixed(2)}%` : "--"}</strong></div>
+    `;
+
+    const chartVolume = (importer.volume || []).map((item) => (item === null || item === undefined ? null : Number(item) * 100));
+    const chartConcentration = (importer.dependency || []).map((item) => (item === null || item === undefined ? null : Number(item) * 100));
+
+    els.tradeTrendStack.innerHTML = `
+      <article class="capacity-trend-card">
+        <div class="capacity-trend-head"><span>进口量变化（万吨）</span></div>
+        ${makeLineChart(chartVolume, product.years, "#1f6b45", { compact: true, showAllYears: true, format: "wantons", label: "进口量" })}
+      </article>
+      <article class="capacity-trend-card">
+        <div class="capacity-trend-head"><span>贸易额变化（百万美元）</span></div>
+        ${makeLineChart(importer.value || [], product.years, "#3f8f5c", { compact: true, showAllYears: true, label: "贸易额" })}
+      </article>
+      <article class="capacity-trend-card">
+        <div class="capacity-trend-head"><span>进口集中度变化（%）</span></div>
+        ${makeLineChart(chartConcentration, product.years, "#7a5ea8", { compact: true, showAllYears: true, format: "percent", label: "集中度" })}
+      </article>
+    `;
+    enhanceTradeTrendCards();
+  }
+
+  function enhanceTradeTrendCards() {
+    if (!els.tradeTrendStack) return;
+    const cards = Array.from(els.tradeTrendStack.querySelectorAll(".capacity-trend-card"));
+    const kinds = ["trade_volume", "trade_value", "trade_concentration"];
+    cards.forEach((card, index) => {
+      const kind = kinds[index];
+      if (!kind) return;
+      card.classList.add("chart-card--interactive", "capacity-trend-card--interactive");
+      card.setAttribute("data-open-detail-modal", kind);
+      card.setAttribute("role", "button");
+      card.setAttribute("tabindex", "0");
+      const head = card.querySelector(".capacity-trend-head");
+      if (head && !card.querySelector(".chart-expand-hint")) {
+        const hint = document.createElement("span");
+        hint.className = "chart-expand-hint";
+        hint.textContent = "点击查看大图";
+        head.appendChild(hint);
+      }
+    });
+  }
+
+  function buildTradeTrendModal(product, country, modalKind) {
+    const importKey = resolveCountryKey(country, product.imports);
+    const importer = importKey ? product.imports[importKey] : null;
+    const years = product.years;
+    const yearIndex = getOverviewYearIndex(product);
+    const selectedYear = String(state.selectedOverviewYear || years.at(yearIndex));
+    const volumeSeries = (importer?.volume || []).map((value) => (value === null || value === undefined ? null : Number(value) * 100));
+    const concentrationSeries = (importer?.dependency || []).map((value) => (value === null || value === undefined ? null : Number(value) * 100));
+    const volumeValues = getAvailableSeriesValues(volumeSeries);
+    const valueValues = getAvailableSeriesValues(importer?.value);
+    const concentrationValues = getAvailableSeriesValues(concentrationSeries);
+
+    const configMap = {
+      trade_volume: {
+        title: `自${labelCountry(country)}进口量变化（万吨）`,
+        color: "#1f6b45",
+        format: "wantons",
+        label: "进口量",
+        series: volumeSeries,
+        note: "用于观察中国自该来源国进口规模的长期变化。",
+        stats: importer
+          ? [
+              { label: `${selectedYear}进口量`, value: `${formatTradeVolume(getSeriesValue(importer.volume, yearIndex))} 万吨` },
+              { label: "近年峰值", value: volumeValues.length ? `${formatTradeVolume(Math.max(...volumeValues) / 100)} 万吨` : "暂无数据" },
+              { label: "近年均值", value: volumeValues.length ? `${formatTradeVolume(volumeValues.reduce((sum, value) => sum + value, 0) / volumeValues.length / 100)} 万吨` : "暂无数据" },
+            ]
+          : [],
+      },
+      trade_value: {
+        title: `与${labelCountry(country)}贸易额变化（百万美元）`,
+        color: "#3f8f5c",
+        format: "",
+        label: "贸易额",
+        series: importer?.value || [],
+        note: "用于观察中国与该来源国贸易金额的变化。",
+        stats: importer
+          ? [
+              { label: `${selectedYear}贸易额`, value: `${formatTradeValue(getSeriesValue(importer.value, yearIndex))} 百万美元` },
+              { label: "近年峰值", value: valueValues.length ? `${formatTradeValue(Math.max(...valueValues))} 百万美元` : "暂无数据" },
+              { label: "近年均值", value: valueValues.length ? `${formatTradeValue(valueValues.reduce((sum, value) => sum + value, 0) / valueValues.length)} 百万美元` : "暂无数据" },
+            ]
+          : [],
+      },
+      trade_concentration: {
+        title: `${labelCountry(country)}进口集中度变化（%）`,
+        color: "#7a5ea8",
+        format: "percent",
+        label: "集中度",
+        series: concentrationSeries,
+        note: "用于观察中国对该来源国进口依赖是否升高或回落。",
+        stats: importer
+          ? [
+              { label: `${selectedYear}集中度`, value: formatOptionalSeriesValue(importer.dependency, yearIndex, formatPct) },
+              { label: "近年峰值", value: concentrationValues.length ? `${Math.max(...concentrationValues).toFixed(2)}%` : "暂无数据" },
+              { label: "近年均值", value: concentrationValues.length ? `${(concentrationValues.reduce((sum, value) => sum + value, 0) / concentrationValues.length).toFixed(2)}%` : "暂无数据" },
+            ]
+          : [],
+      },
+      trade_overall_volume: null,
+      trade_overall_value: null,
+      trade_overall_price: null,
+    };
+
+    if (modalKind.startsWith("trade_overall_")) {
+      const overview = getTradeOverview(product);
+      const overallMap = {
+        trade_overall_volume: {
+          title: "总进口量变化（万吨）",
+          color: "#1f6b45",
+          format: "wantons",
+          label: "总进口量",
+          series: overview.volume || [],
+          note: "中国该品种年度总进口量变化。",
+          chart: "bar",
+        },
+        trade_overall_value: {
+          title: "总贸易额变化（百万美元）",
+          color: "#3f8f5c",
+          format: "",
+          label: "总贸易额",
+          series: overview.value || [],
+          note: "中国该品种年度总贸易额变化。",
+          chart: "bar",
+        },
+        trade_overall_price: {
+          title: "加权平均进口价变化（美元/吨）",
+          color: "#7a5ea8",
+          format: "price",
+          label: "加权均价",
+          series: overview.price || [],
+          note: "中国该品种年度加权平均进口价格变化。",
+          chart: "line",
+        },
+      };
+      const config = overallMap[modalKind];
+      const seriesValues = getAvailableSeriesValues(config.series);
+      return `
+        <div class="modal-content modal-content--single-chart">
+          <div class="modal-header">
+            <div>
+              <p class="panel-kicker">Trade Detail</p>
+              <h3 class="modal-title" id="detailModalTitle">${config.title}</h3>
+              <p class="modal-copy">总体趋势指标已展开为大图，便于观察年度变化。</p>
+            </div>
+          </div>
+          <div class="modal-metrics modal-metrics--triple">
+            <article class="metric-card"><div class="metric-label">${selectedYear}</div><div class="metric-value">${formatChartValue(getSeriesValue(config.series, yearIndex), config.format)}</div></article>
+            <article class="metric-card"><div class="metric-label">近年峰值</div><div class="metric-value">${seriesValues.length ? formatChartValue(Math.max(...seriesValues), config.format) : "--"}</div></article>
+            <article class="metric-card"><div class="metric-label">近年均值</div><div class="metric-value">${seriesValues.length ? formatChartValue(seriesValues.reduce((sum, value) => sum + value, 0) / seriesValues.length, config.format) : "--"}</div></article>
+          </div>
+          <div class="modal-chart-stack">
+            <article class="modal-chart-card modal-chart-card--wide">
+              <h4>${config.title}</h4>
+              <div class="single-chart single-chart--modal">
+                ${
+                  config.chart === "bar"
+                    ? makeBarChart(config.series, years, config.color, { width: 980, height: 360, format: config.format, label: config.label })
+                    : makeLineChart(config.series, years, config.color, { width: 980, height: 360, showAllYears: true, format: config.format, label: config.label })
+                }
+              </div>
+              <p class="modal-chart-note">${config.note}</p>
+            </article>
+          </div>
+        </div>
+      `;
+    }
+
+    const config = configMap[modalKind];
+    if (!importer || !config) {
+      return `<div class="modal-content modal-content--empty"><div class="modal-header"><div><h3 class="modal-title" id="detailModalTitle">暂无数据</h3></div></div></div>`;
+    }
+    return `
+      <div class="modal-content modal-content--single-chart">
+        <div class="modal-header">
+          <div>
+            <p class="panel-kicker">Trade Detail</p>
+            <h3 class="modal-title" id="detailModalTitle">${config.title}</h3>
+            <p class="modal-copy">${labelCountry(country)} 的这项进口指标已展开为大图。</p>
+          </div>
+        </div>
+        <div class="modal-metrics modal-metrics--triple">
+          ${config.stats.map((item) => `<article class="metric-card"><div class="metric-label">${item.label}</div><div class="metric-value">${item.value}</div></article>`).join("")}
+        </div>
+        <div class="modal-chart-stack">
+          <article class="modal-chart-card modal-chart-card--wide">
+            <h4>${config.title}</h4>
+            <div class="single-chart single-chart--modal">
+              ${makeLineChart(config.series, years, config.color, { width: 980, height: 360, showAllYears: true, format: config.format, label: config.label })}
+            </div>
+            <p class="modal-chart-note">${config.note}</p>
+          </article>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderTradeOverallCharts(product) {
+    const meta = getProductMeta(product.id);
+    const overview = getTradeOverview(product);
+    if (els.tradeOverallTitle) {
+      els.tradeOverallTitle.textContent = `中国${meta.name}进口总体趋势（2005—2024年）`;
+    }
+    if (!els.tradeOverallCharts) return;
+    els.tradeOverallCharts.innerHTML = `
+      <article class="capacity-trend-card chart-card--interactive" data-open-detail-modal="trade_overall_volume" role="button" tabindex="0">
+        <div class="capacity-trend-head"><span>总进口量（万吨）</span><span class="chart-expand-hint">点击查看大图</span></div>
+        ${makeBarChart(overview.volume || [], product.years, "#1f6b45", { format: "wantons", label: "总进口量" })}
+      </article>
+      <article class="capacity-trend-card chart-card--interactive" data-open-detail-modal="trade_overall_value" role="button" tabindex="0">
+        <div class="capacity-trend-head"><span>总贸易额（百万美元）</span><span class="chart-expand-hint">点击查看大图</span></div>
+        ${makeBarChart(overview.value || [], product.years, "#3f8f5c", { label: "总贸易额" })}
+      </article>
+      <article class="capacity-trend-card chart-card--interactive" data-open-detail-modal="trade_overall_price" role="button" tabindex="0">
+        <div class="capacity-trend-head"><span>加权平均进口价（美元/吨）</span><span class="chart-expand-hint">点击查看大图</span></div>
+        ${makeLineChart(overview.price || [], product.years, "#7a5ea8", { compact: true, showAllYears: true, format: "price", label: "加权均价" })}
+      </article>
+    `;
+  }
+
+  function drawTradeMap(product, topCountries) {
+    if (!els.tradeWorldMap) return;
+    const selectedYear = String(state.selectedOverviewYear || product.years.at(-1));
+    const meta = getProductMeta(product.id);
+    if (els.tradeMapKicker) els.tradeMapKicker.textContent = "进口来源分布";
+    if (els.tradeMapTitle) els.tradeMapTitle.textContent = `${selectedYear}年中国${meta.name}进口来源分布（前五大）`;
+    if (els.tradeMapCaption) els.tradeMapCaption.textContent = `注：地图颜色深浅表示中国自该国${meta.name}进口量大小`;
+
+    els.tradeWorldMap.innerHTML = "";
+    applyTradeMapViewport();
+    if (!state.geoJson) {
+      els.tradeWorldMap.innerHTML = '<text x="500" y="260" text-anchor="middle" fill="#627061" font-size="18">地图数据加载中...</text>';
+      return;
+    }
+
+    const maxVolume = Math.max(...topCountries.map((item) => item.volume || 0), 0.0001);
+    const styleMap = Object.fromEntries(
+      topCountries.map((item) => [item.country, { fill: getProductionColor((item.volume || 0) / maxVolume), rank: item.rank }]),
+    );
+
+    const ocean = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    ocean.setAttribute("x", "0");
+    ocean.setAttribute("y", "0");
+    ocean.setAttribute("width", "1000");
+    ocean.setAttribute("height", "520");
+    ocean.setAttribute("fill", "#eef4f0");
+    els.tradeWorldMap.appendChild(ocean);
+
+    state.geoJson.features.forEach((feature) => {
+      const mapName = feature.properties?.name;
+      const matchedKey = resolveCountryKey(mapName, Object.keys(styleMap));
+      const pathData = geometryToPath(feature.geometry);
+      if (!pathData) return;
+      const node = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      node.setAttribute("d", pathData);
+      node.setAttribute("fill", matchedKey ? styleMap[matchedKey].fill : "#d9e2dc");
+      node.setAttribute("stroke", "rgba(31,107,69,0.18)");
+      node.setAttribute("stroke-width", "0.7");
+      node.setAttribute("class", "country-shape");
+      node.setAttribute("data-country", matchedKey || mapName);
+      if (matchedKey && normalizeCountryName(matchedKey) === normalizeCountryName(state.selectedCountry)) {
+        node.classList.add("is-active");
+        node.setAttribute("stroke", "#1f6b45");
+        node.setAttribute("stroke-width", "1.6");
+      }
+      node.addEventListener("mouseenter", (event) => {
+        const tip = els.tradeMapTooltip;
+        if (!tip) return;
+        const ranked = topCountries.find((item) => normalizeCountryName(item.country) === normalizeCountryName(matchedKey || mapName));
+        tip.classList.remove("hidden");
+        tip.innerHTML = `
+          <strong>${labelCountry(matchedKey || mapName)}</strong>
+          <div>${ranked ? `排名第 ${ranked.rank}` : "未进入前五"}</div>
+          <div>进口量：${ranked ? `${formatTradeVolume(ranked.volume)} 万吨` : "--"}</div>
+        `;
+        const box = els.tradeWorldMap.getBoundingClientRect();
+        tip.style.left = `${event.clientX - box.left + 14}px`;
+        tip.style.top = `${event.clientY - box.top + 14}px`;
+      });
+      node.addEventListener("mousemove", (event) => {
+        const tip = els.tradeMapTooltip;
+        if (!tip || tip.classList.contains("hidden")) return;
+        const box = els.tradeWorldMap.getBoundingClientRect();
+        tip.style.left = `${event.clientX - box.left + 14}px`;
+        tip.style.top = `${event.clientY - box.top + 14}px`;
+      });
+      node.addEventListener("mouseleave", () => els.tradeMapTooltip?.classList.add("hidden"));
+      node.addEventListener("click", () => {
+        if (Date.now() < state.suppressTradeMapClickUntil) return;
+        const next = resolveCountryKey(mapName, Object.keys(product.imports || {}));
+        if (!next) return;
+        state.selectedCountry = next;
+        render();
+      });
+      els.tradeWorldMap.appendChild(node);
+    });
+
+    topCountries.forEach((item) => {
+      const point = getCountryAnchorPoint(item.country);
+      if (!point) return;
+      const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      group.style.cursor = "pointer";
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("cx", point[0]);
+      circle.setAttribute("cy", point[1]);
+      circle.setAttribute("r", "11");
+      circle.setAttribute("fill", "#1f6b45");
+      circle.setAttribute("stroke", "#fff");
+      circle.setAttribute("stroke-width", "2");
+      const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      label.setAttribute("x", point[0]);
+      label.setAttribute("y", point[1] + 4);
+      label.setAttribute("text-anchor", "middle");
+      label.setAttribute("fill", "#fff");
+      label.setAttribute("font-size", "11");
+      label.setAttribute("font-weight", "700");
+      label.textContent = String(item.rank);
+      group.appendChild(circle);
+      group.appendChild(label);
+      group.addEventListener("click", () => {
+        state.selectedCountry = item.country;
+        render();
+      });
+      els.tradeWorldMap.appendChild(group);
+    });
+  }
+
+  function renderTradeDashboard(product) {
+    ensureOverviewYear(product);
+    const topCountries = getTradeTopCountries(product);
+    if (!state.selectedCountry || !resolveCountryKey(state.selectedCountry, topCountries.map((item) => item.country))) {
+      state.selectedCountry = topCountries[0]?.country || null;
+    } else {
+      state.selectedCountry = resolveCountryKey(state.selectedCountry, topCountries.map((item) => item.country));
+    }
+
+    renderTradeFilters(product);
+    renderTradeMetrics(product);
+    drawTradeMap(product, topCountries);
+    renderTradeRankTable(product, topCountries);
+    renderTradeDetail(product, state.selectedCountry, topCountries);
+    renderTradeOverallCharts(product);
+    initChartInteractions();
+    hideChartTooltip();
+  }
+
   function render() {
     const product = getProduct();
     ensureOverviewYear(product);
-    state.selectedCountry = getSelectedCountry(product);
+    syncDashboardLayout();
     updateView();
     createLanding();
     createTopbar(product);
+
+    if (state.module === "production") {
+      renderCapacityDashboard(product);
+      return;
+    }
+
+    if (state.module === "trade") {
+      renderTradeDashboard(product);
+      return;
+    }
+
+    state.selectedCountry = getSelectedCountry(product);
     buildHeroMetrics(product);
     drawMap(product);
     renderSidePanel(product);
@@ -5394,7 +4511,7 @@
 
   async function loadWorldMap() {
     try {
-      const response = await fetch("./world.json");
+      const response = await fetch("./scripts/world.json");
       state.geoJson = await response.json();
     } catch (error) {
       console.error("加载世界地图失败", error);
@@ -5411,6 +4528,8 @@
 
   initModalInteractions();
   initMapInteractions();
+  initCapacityMapInteractions();
+  initTradeMapInteractions();
   render();
   loadWorldMap();
 })();

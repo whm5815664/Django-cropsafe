@@ -44,7 +44,7 @@ cd C:\Users\HZAUAIoT\Documents\粮食安全
 .\refresh_data.ps1
 ```
 
-它会重新读取 `D:\2026.6.12\粮食安全实验室数据结果` 下的 Excel，并覆盖生成新的 [data.js](C:\Users\HZAUAIoT\Documents\粮食安全\data.js)。
+它会重新读取 `D:\2026.6.12\粮食安全实验室数据结果` 下的 Excel，并覆盖生成新的 [scripts/data.js](./scripts/data.js)。
 
 ## 说明
 
@@ -54,6 +54,6 @@ cd C:\Users\HZAUAIoT\Documents\粮食安全
   - 风险分级结果
   - 短期替代潜能
   - 长期替代潜能
-- 页面地图已改为基于本地 [world.json](C:\Users\HZAUAIoT\Documents\粮食安全\world.json) 的真实 GEOJSON 国家边界地图，并支持鼠标悬浮查看具体数据。
+- 页面地图已改为基于本地 [scripts/world.json](./scripts/world.json) 的真实 GEOJSON 国家边界地图，并支持鼠标悬浮查看具体数据。
 - 由于当前数据集中没有直接提供 D/T/V 三个原始分量，风险页严格展示实验室输出的 `CI` 三年结果与风险等级，不再伪造 DTV 分项。
 - 数据构建脚本在 [scripts/build_data.py](C:\Users\HZAUAIoT\Documents\粮食安全\scripts\build_data.py)。
