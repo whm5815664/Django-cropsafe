@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=粮食产品国际产能分布系统
+Name[zh_CN]=粮食产品国际产能分布系统
+Comment=启动本地 HTTPS 网页服务
+Comment[zh_CN]=双击启动本地 HTTPS 网页服务并打开浏览器
+Exec=bash -c 'DIR="$(dirname "$(readlink -f "%k")")"; cd "$DIR" && exec ./start_server.sh'
+Terminal=true
+Categories=Education;Science;
+StartupNotify=true
+Icon=applications-internet

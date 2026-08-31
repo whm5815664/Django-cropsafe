@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>粮食产品国际产能分布系统</title>
-    <link rel="stylesheet" href="./styles.css?v=20260727-alt-border" />
+    <link rel="stylesheet" href="./styles.css?v=20260831-refresh" />
   </head>
   <body>
     <div class="app-shell" id="appShell">
@@ -21,6 +21,12 @@
           </p>
         </header>
         <main class="crop-gallery" id="cropGallery"></main>
+        <div class="landing-actions">
+          <button class="refresh-data-btn" id="refreshDataBtn" type="button">
+            更新数据
+          </button>
+          <p class="refresh-data-status" id="refreshDataStatus" hidden></p>
+        </div>
       </section>
 
       <section class="dashboard-view hidden" id="dashboardView">
@@ -259,7 +265,7 @@
         <div class="modal-body" id="detailModalBody"></div>
       </section>
     </div>
-    <script src="./scripts/data.js?v=20260727-alt-border"></script>
-    <script src="./app.js?v=20260727-alt-border"></script>
+    <script src="./scripts/data.js?v=20260831-refresh"></script>
+    <script src="./app.js?v=20260831-refresh"></script>
   </body>
 </html>

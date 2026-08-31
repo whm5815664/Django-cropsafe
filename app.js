@@ -380,6 +380,8 @@
     landingView: document.getElementById("landingView"),
     dashboardView: document.getElementById("dashboardView"),
     cropGallery: document.getElementById("cropGallery"),
+    refreshDataBtn: document.getElementById("refreshDataBtn"),
+    refreshDataStatus: document.getElementById("refreshDataStatus"),
     backHome: document.getElementById("backHome"),
     dashboardTitle: document.getElementById("dashboardTitle"),
     productSwitcher: document.getElementById("productSwitcher"),
@@ -4525,6 +4527,59 @@
     closeDetailModal();
     updateView();
   });
+
+  function setRefreshStatus(message, kind) {
+    if (!els.refreshDataStatus) return;
+    els.refreshDataStatus.hidden = !message;
+    els.refreshDataStatus.textContent = message || "";
+    els.refreshDataStatus.classList.toggle("is-error", kind === "error");
+    els.refreshDataStatus.classList.toggle("is-success", kind === "success");
+  }
+
+  async function refreshDashboardData() {
+    if (!els.refreshDataBtn || els.refreshDataBtn.disabled) return;
+
+    els.refreshDataBtn.disabled = true;
+    els.refreshDataBtn.textContent = "更新中…";
+    setRefreshStatus("正在重建数据");
+
+    try {
+      const response = await fetch("/api/refresh-data", {
+        method: "POST",
+        headers: { Accept: "application/json" },
+      });
+      let payload = null;
+      try {
+        payload = await response.json();
+      } catch (_error) {
+        payload = null;
+      }
+
+      if (!response.ok || !payload?.ok) {
+        const message =
+          payload?.error ||
+          (response.status === 404 || response.status === 501
+            ? "当前服务不支持网页更新数据。请通过 start_server.ps1 或 scripts.https_server 启动 HTTPS 服务后再试。"
+            : `数据更新失败（HTTP ${response.status}）。`);
+        throw new Error(message);
+      }
+
+      setRefreshStatus("数据更新成功，正在刷新页面…", "success");
+      window.location.reload();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "数据更新失败，请稍后重试。";
+      setRefreshStatus(message, "error");
+      els.refreshDataBtn.disabled = false;
+      els.refreshDataBtn.textContent = "更新数据";
+    }
+  }
+
+  if (els.refreshDataBtn) {
+    els.refreshDataBtn.addEventListener("click", () => {
+      refreshDashboardData();
+    });
+  }
 
   initModalInteractions();
   initMapInteractions();
