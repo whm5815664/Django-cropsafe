@@ -19689,7 +19689,7 @@ window.GRAIN_APP_DATA = {
             3.2683
           ]
         },
-        "TÃ¼rkiye": {
+        "Turkey": {
           "rank": [
             10,
             9,

@@ -136,85 +136,6 @@ function Test-VenvPython {
     }
 }
 
-function Test-PythonModule {
-    param(
-        [string]$VenvPython,
-        [string]$ModuleName
-    )
-
-    & $VenvPython -c "import $ModuleName" 2>$null | Out-Null
-    return $LASTEXITCODE -eq 0
-}
-
-function Install-ProjectRequirements {
-    param(
-        [string]$VenvPython,
-        [string]$Requirements
-    )
-
-    Write-Host "正在安装依赖: $Requirements"
-    & $VenvPython -m pip install --upgrade pip 2>$null | Out-Null
-
-    $savedHttpProxy = $env:HTTP_PROXY
-    $savedHttpsProxy = $env:HTTPS_PROXY
-    $savedHttpProxyLower = $env:http_proxy
-    $savedHttpsProxyLower = $env:https_proxy
-    $env:HTTP_PROXY = ""
-    $env:HTTPS_PROXY = ""
-    $env:http_proxy = ""
-    $env:https_proxy = ""
-
-    $attempts = @(
-        @("-r", $Requirements),
-        @("-r", $Requirements, "--trusted-host", "pypi.org", "--trusted-host", "files.pythonhosted.org"),
-        @("-r", $Requirements, "-i", "https://pypi.tuna.tsinghua.edu.cn/simple", "--trusted-host", "pypi.tuna.tsinghua.edu.cn")
-    )
-
-    try {
-        foreach ($args in $attempts) {
-            & $VenvPython -m pip install @args
-            if ($LASTEXITCODE -eq 0) {
-                return $true
-            }
-        }
-        return $false
-    }
-    finally {
-        $env:HTTP_PROXY = $savedHttpProxy
-        $env:HTTPS_PROXY = $savedHttpsProxy
-        $env:http_proxy = $savedHttpProxyLower
-        $env:https_proxy = $savedHttpsProxyLower
-    }
-}
-
-function Ensure-DataImportDeps {
-    param(
-        [string]$ProjectRoot,
-        [string]$VenvPython
-    )
-
-    if (Test-PythonModule -VenvPython $VenvPython -ModuleName "openpyxl") {
-        return
-    }
-
-    Write-Host "正在安装数据导入依赖 openpyxl..."
-    $requirements = Join-Path $ProjectRoot "requirements.txt"
-    if (-not (Test-Path $requirements)) {
-        throw "缺少 requirements.txt，无法安装 openpyxl。"
-    }
-
-    $installed = Install-ProjectRequirements -VenvPython $VenvPython -Requirements $requirements
-    if (-not $installed -or -not (Test-PythonModule -VenvPython $VenvPython -ModuleName "openpyxl")) {
-        throw @"
-缺少 openpyxl 模块，数据导入无法运行。
-请手动执行：
-  python -m pip install -r requirements.txt
-或：
-  python -m pip install openpyxl
-"@
-    }
-}
-
 function Resolve-ProjectPython {
     param(
         [Parameter(Mandatory = $true)]
@@ -242,7 +163,6 @@ function Resolve-ProjectPython {
 也可手动创建虚拟环境：
   cd `"$ProjectRoot`"
   python -m venv .venv
-  .\.venv\Scripts\pip install -r requirements.txt
 "@
 }
 
@@ -377,7 +297,6 @@ function Invoke-DataImport {
     )
 
     Test-DataRoot -DataRoot $DataRoot
-    Ensure-DataImportDeps -ProjectRoot $ProjectRoot -VenvPython $Python
 
     $moduleArgs = Get-PythonModuleArguments -ModuleName "scripts.build_data"
 

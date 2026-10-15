@@ -66,12 +66,18 @@
     Nigeria: "尼日利亚",
     Ethiopia: "埃塞俄比亚",
     Sudan: "苏丹",
+    "Sudan (former)": "苏丹（原）",
+    "Sudan (...2011)": "苏丹（2011年前）",
+    "South Sudan": "南苏丹",
     Kazakhstan: "哈萨克斯坦",
     "South Africa": "南非",
     Romania: "罗马尼亚",
     Bulgaria: "保加利亚",
     Turkey: "土耳其",
     "Türkiye": "土耳其",
+    "T\u00c3\u00bcrkiye": "土耳其",
+    "United Kingdom": "英国",
+    "United Kingdom of Great Britain and Northern Ireland": "英国",
     "Bolivia (Plurinational State of)": "玻利维亚",
     "United Rep. of Tanzania": "坦桑尼亚",
     "United Republic of Tanzania": "坦桑尼亚",
@@ -89,8 +95,18 @@
     unitedstatesofamerica: ["USA", "United States", "United States of America"],
     russia: ["Russia", "Russian Federation"],
     russianfederation: ["Russia", "Russian Federation"],
-    turkey: ["Turkey", "Türkiye"],
-    trkiye: ["Turkey", "Türkiye"],
+    turkey: ["Turkey", "Türkiye", "T\u00c3\u00bcrkiye"],
+    trkiye: ["Turkey", "Türkiye", "T\u00c3\u00bcrkiye"],
+    sudan: ["Sudan", "Sudan (former)", "Sudan (...2011)"],
+    sudanformer: ["Sudan", "Sudan (former)"],
+    sudan2011: ["Sudan", "Sudan (...2011)"],
+    southsudan: ["South Sudan", "S. Sudan"],
+    ssudan: ["South Sudan", "S. Sudan"],
+    unitedkingdom: ["United Kingdom", "United Kingdom of Great Britain and Northern Ireland"],
+    unitedkingdomofgreatbritainandnorthernireland: [
+      "United Kingdom",
+      "United Kingdom of Great Britain and Northern Ireland",
+    ],
     bolivia: ["Bolivia", "Bolivia (Plurinational State of)"],
     boliviaplurinationalstateof: ["Bolivia", "Bolivia (Plurinational State of)"],
     tanzania: ["Tanzania", "United Rep. of Tanzania", "United Republic of Tanzania"],
@@ -480,7 +496,15 @@
   }
 
   function labelCountry(name) {
-    return WORLD_COUNTRY_LABELS[name] || COUNTRY_LABELS[name] || name;
+    if (!name) return name;
+    const direct = WORLD_COUNTRY_LABELS[name] || COUNTRY_LABELS[name];
+    if (direct) return direct;
+    const aliases = COUNTRY_ALIASES[normalizeCountryName(name)] || [];
+    for (const alias of aliases) {
+      const label = WORLD_COUNTRY_LABELS[alias] || COUNTRY_LABELS[alias];
+      if (label) return label;
+    }
+    return name;
   }
 
   function getRecentOverviewYears(product) {
